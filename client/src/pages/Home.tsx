@@ -99,7 +99,7 @@ function MapPreview({
 
   return (
     <div className="map-preview" aria-label="Nöbetçi eczane harita görünümü">
-      <div className="map-canvas relative overflow-hidden">
+      <div className=" relative overflow-hidden">
         <div className="map-grid" aria-hidden="true" />
         <div className="map-river" aria-hidden="true" />
 
