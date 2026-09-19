@@ -17,13 +17,19 @@ import {
   Calendar,
   Layers,
   LocateFixed,
+  Calculator,
+  Wind,
+  ShieldAlert,
+  Pill,
+  Droplets,
+  HeartPulse,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AdRail, MobileAd, SectionHeading } from "@/components/SiteLayout";
 import { RealLeafletMap } from "@/components/RealLeafletMap";
 import { useQuota } from "@/hooks/useQuota";
 import { toTurkishSlug } from "@shared/turkeyDistricts";
-import { formatDistance, calculateDistanceKm } from "@/lib/turkeyGeoData";
+import { formatDistance, calculateDistanceKm, TURKEY_CITY_COORDINATES, TURKEY_DISTRICT_COORDINATES } from "@/lib/turkeyGeoData";
 import {
   getLocalCities,
   getLocalDistricts,
@@ -94,14 +100,6 @@ function MapPreview({
 
   return (
     <div className="map-preview" aria-label="Nöbetçi eczane harita görünümü">
-      <div className="map-topbar">
-        <span className="map-title">
-          <MapPin size={18} /> {areaTitle}
-        </span>
-        <span className="map-status">
-          <span className="status-dot" /> {pharmacies.length} nöbetçi
-        </span>
-      </div>
       <div className="map-canvas relative overflow-hidden">
         <div className="map-grid" aria-hidden="true" />
         <div className="map-river" aria-hidden="true" />
@@ -443,13 +441,13 @@ function PharmacyCard({
       {/* Action Buttons Pinned at the Bottom for Uniform Alignment */}
       <div className="mt-auto pt-2 grid grid-cols-2 gap-2">
         <a
-          className="button button-secondary flex items-center justify-center gap-1 font-bold text-xs sm:text-[13px] py-2 px-1.5 rounded-xl whitespace-nowrap overflow-hidden"
+          className="button button-secondary flex items-center justify-center gap-1 font-bold text-[11px] sm:text-xs py-2 px-1.5 rounded-xl overflow-hidden min-w-0"
           href={`tel:${cleanPhone}`}
           onClick={(event) => event.stopPropagation()}
           title={pharmacy.phone || "Telefon Et"}
         >
-          <Phone size={13} className="shrink-0" />
-          <span className="truncate">{displayPhone}</span>
+          <Phone size={13} className="shrink-0 text-red-600" />
+          <span className="truncate">{displayPhone || "Ara"}</span>
         </a>
         <a
           className="button button-quiet flex items-center justify-center gap-1 font-bold text-xs sm:text-[13px] py-2 px-2 rounded-xl text-red-700 bg-red-50/80 hover:bg-red-100/80 whitespace-nowrap"
@@ -476,7 +474,7 @@ export default function Home() {
   const [daysData, setDaysData] = useState<DayDutyGroup[]>([]);
   const [selectedPharmacy, setSelectedPharmacy] = useState(0);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [locationNote, setLocationNote] = useState("Konumunuz paylaşılmadan arama yapılmaz.");
+  const [locationNote, setLocationNote] = useState("Konum bilgisi alınamadı, lütfen il ve ilçe seçerek arama yapınız.");
   const [lastWasCache, setLastWasCache] = useState<boolean | undefined>(undefined);
   const [sourceNote, setSourceNote] = useState<string>("");
 
@@ -519,7 +517,19 @@ export default function Home() {
     locOverride?: { latitude: number; longitude: number } | null
   ) => {
     setLoading(true);
-    const activeLoc = locOverride !== undefined ? locOverride : userLocation;
+    let activeLoc = locOverride !== undefined ? locOverride : userLocation;
+    if (!activeLoc) {
+      const cSlug = toTurkishSlug(targetCity);
+      const dSlug = targetDistrict && targetDistrict !== "Tümü" ? toTurkishSlug(targetDistrict) : "";
+      if (dSlug && TURKEY_DISTRICT_COORDINATES[cSlug]?.[dSlug]) {
+        const dCoords = TURKEY_DISTRICT_COORDINATES[cSlug][dSlug];
+        activeLoc = { latitude: dCoords.lat, longitude: dCoords.lng };
+      } else if (TURKEY_CITY_COORDINATES[cSlug]) {
+        const cCoords = TURKEY_CITY_COORDINATES[cSlug];
+        activeLoc = { latitude: cCoords.lat, longitude: cCoords.lng };
+      }
+    }
+
     try {
       const result = await fetchDutyPharmaciesAuto(targetCity, targetDistrict, activeLoc);
       if (result.success && result.days.length > 0) {
@@ -529,7 +539,6 @@ export default function Home() {
         const todayIdx = result.days.findIndex((d) => d.day === "Bugün");
         setSelectedDayIndex(todayIdx !== -1 ? todayIdx : 0);
         setSelectedPharmacy(0);
-        toast.success(`${targetCity} nöbetçi eczaneleri güncellendi`);
       } else {
         setDaysData([]);
         toast.error("Nöbetçi eczane bulunamadı.");
@@ -623,37 +632,28 @@ export default function Home() {
       <section className="hero-section">
         <AdRail side="left" />
         <div className="hero-content container">
-          <div className="hero-eyebrow">
-            <span className="eyebrow-line" /> BUGÜN AÇIK NÖBETÇİ ECZANELER <span className="eyebrow-line" />
-          </div>
           <h1>
             En Yakın <span>Nöbetçi Eczaneyi</span> Bul
           </h1>
-          <p className="hero-lead">
-            Türkiye genelinde 81 il ve ilçelerde şu anda açık olan güncel nöbetçi eczaneler.
-          </p>
 
-          <div className="search-panel">
+          <div className="search-panel max-w-2xl mx-auto bg-white p-4 sm:p-5 rounded-2xl shadow-xl border border-red-100">
+            {/* GPS Butonu — İnce, Şık ve Temayla Uyumlu */}
             <button
               type="button"
-              className="button button-primary location-button"
+              className="w-full h-12 sm:h-13 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-sm sm:text-base shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
               onClick={findNearby}
               disabled={loading}
             >
               {loading ? (
-                <Loader2 size={24} className="animate-spin" />
+                <Loader2 className="w-5 h-5 animate-spin text-white shrink-0" />
               ) : (
-                <MapPin size={24} fill="currentColor" />
+                <LocateFixed className="w-5 h-5 text-white shrink-0" />
               )}
-              Yakınımdaki Eczaneleri Bul (GPS)
+              <span>Yakınımdaki Eczaneleri Bul (GPS)</span>
             </button>
 
-            <div className="search-divider">
-              <span>veya 81 il ve ilçe seçin</span>
-            </div>
-
-            {/* Otomatik Canlı Harita - Mobilde Genişletilmiş ve Kenarlara Yayılmış */}
-            <div className="-mx-2 sm:mx-0 w-[calc(100%+1rem)] sm:w-full my-3 sm:my-4 rounded-xl sm:rounded-2xl overflow-hidden border border-gray-200 shadow-md bg-white">
+            {/* Otomatik Canlı Harita - Kenarlara Tam Oturan Sade Görünüm */}
+            <div className="-mx-2 sm:mx-0 w-[calc(100%+1rem)] sm:w-full my-4 rounded-xl sm:rounded-2xl overflow-hidden border border-gray-200 shadow-md bg-white">
               <RealLeafletMap
                 pharmacies={activePharmacies}
                 selectedPharmacy={selectedPharmacy}
@@ -667,58 +667,93 @@ export default function Home() {
               />
             </div>
 
-            <div className="select-row">
-              <label>
-                <span>İl</span>
-                <select
-                  value={city}
-                  onChange={(e) => handleCityChange(e.target.value)}
-                  aria-label="İl seçin"
-                  disabled={loading}
-                >
-                  {cityList.length > 0 ? (
-                    cityList.map((item) => (
-                      <option key={item.slug} value={item.name}>
-                        {item.name}
-                      </option>
-                    ))
-                  ) : (
-                    <option value="İstanbul">İstanbul</option>
-                  )}
-                </select>
-              </label>
+            {/* Yaşlılar ve Herkes İçin Son Derece Sade İl / İlçe Seçimi */}
+            <div className="bg-slate-50/90 p-4 sm:p-5 rounded-2xl border-2 border-slate-200">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {/* 1. Şehir / İl Seçimi */}
+                <div>
+                  <label className="block text-sm sm:text-base font-extrabold text-slate-900 mb-1.5">
+                    1. Şehir (İl) Seçin:
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={city}
+                      onChange={(e) => handleCityChange(e.target.value)}
+                      aria-label="İl seçin"
+                      disabled={loading}
+                      className="w-full h-12 sm:h-13 px-4 py-2 text-base font-bold text-slate-900 bg-white border-2 border-slate-300 rounded-xl focus:border-red-600 focus:ring-2 focus:ring-red-200 outline-none transition-all cursor-pointer"
+                    >
+                      {cityList.length > 0 ? (
+                        cityList.map((item) => (
+                          <option key={item.slug} value={item.name} className="py-2 text-base">
+                            {item.name}
+                          </option>
+                        ))
+                      ) : (
+                        <option value="İstanbul">İstanbul</option>
+                      )}
+                    </select>
+                  </div>
+                </div>
 
-              <label>
-                <span>İlçe</span>
-                <select
-                  value={district}
-                  onChange={(e) => handleDistrictChange(e.target.value)}
-                  aria-label="İlçe seçin"
-                  disabled={loading}
-                >
-                  <option value="Tümü">Tüm İlçeler ({districtList.length})</option>
-                  {districtList.map((dist) => (
-                    <option key={dist} value={dist}>
-                      {dist}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                {/* 2. İlçe Seçimi */}
+                <div>
+                  <label className="block text-sm sm:text-base font-extrabold text-slate-900 mb-1.5">
+                    2. İlçe Seçin:
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={district}
+                      onChange={(e) => handleDistrictChange(e.target.value)}
+                      aria-label="İlçe seçin"
+                      disabled={loading}
+                      className="w-full h-12 sm:h-13 px-4 py-2 text-base font-bold text-slate-900 bg-white border-2 border-slate-300 rounded-xl focus:border-red-600 focus:ring-2 focus:ring-red-200 outline-none transition-all cursor-pointer"
+                    >
+                      <option value="Tümü">Tüm İlçeler ({districtList.length})</option>
+                      {districtList.map((dist) => (
+                        <option key={dist} value={dist} className="py-2 text-base">
+                          {dist}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
 
+              {/* Listele Butonu */}
               <button
                 type="button"
-                className="button button-outline search-button"
+                className="w-full mt-3.5 h-12 sm:h-13 bg-red-600 hover:bg-red-700 text-white font-black text-base rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
                 onClick={() => fetchPharmacies(city, district)}
                 disabled={loading}
               >
-                {loading ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={20} />}
-                Eczaneleri Listele
+                {loading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <ArrowRight className="w-5 h-5 stroke-[2.5]" />
+                )}
+                <span>Nöbetçi Eczaneleri Göster</span>
               </button>
             </div>
 
-            <p className="search-note">
-              <ShieldCheck size={17} /> {locationNote}
-            </p>
+            {/* Konum Bildirim Çubuğu (Dinamik ve Net) */}
+            <div className={`mt-3.5 px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-bold flex items-center justify-center gap-2 text-center transition-all ${
+              userLocation 
+                ? "bg-emerald-50 border-emerald-300 text-emerald-800" 
+                : "bg-amber-50 border-amber-300 text-amber-900"
+            }`}>
+              {userLocation ? (
+                <>
+                  <Check className="w-4 h-4 text-emerald-600 shrink-0 stroke-[3]" />
+                  <span>📍 Konum bilgisi alındı, eczaneler mesafeye göre listelendi.</span>
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>Konum bilgisi alınamadı, lütfen yukarıdan il ve ilçe seçiniz.</span>
+                </>
+              )}
+            </div>
           </div>
         </div>
         <AdRail side="right" />
@@ -729,9 +764,107 @@ export default function Home() {
       {/* Results Section */}
       <section className="results-section" id="sonuclar">
         <div className="container">
+
+          {/* İstanbul Özel Lezzet Molası: İtalyan Pizza Reklam Alanı */}
+          {(city === "İstanbul" || (userLocation && userLocation.latitude > 40.8 && userLocation.latitude < 41.3 && userLocation.longitude > 28.5 && userLocation.longitude < 29.5)) && (
+            <div className="mb-8 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-950 via-stone-900 to-red-950 text-white border border-amber-800/60 shadow-lg space-y-3.5">
+              <div className="flex items-center justify-between gap-2 border-b border-amber-800/50 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="p-1 rounded-md bg-amber-500/20 text-amber-300 font-black text-[10px] uppercase border border-amber-500/30">
+                    İSTANBUL ÖZEL LEZZET MOLASI
+                  </span>
+                  <h3 className="text-xs sm:text-sm font-black text-amber-100">
+                    🍕 Gerçek İtalyan Napoletana Pizza Dükkanları
+                  </h3>
+                </div>
+                <span className="text-[10px] text-amber-300/80 font-bold">Sponsorlu</span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                {/* 1. Forno di Roma */}
+                <div className="p-3.5 rounded-xl bg-stone-900/90 border border-stone-800 flex flex-col justify-between space-y-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-extrabold text-sm sm:text-base text-white">Forno di Roma</h4>
+                      <span className="text-[11px] font-bold text-amber-300 bg-amber-950/80 px-2 py-0.5 rounded border border-amber-800">
+                        {userLocation
+                          ? `📍 ${formatDistance(calculateDistanceKm(userLocation.latitude, userLocation.longitude, 40.9858, 29.0270))}`
+                          : "📍 Kadıköy / Moda"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-stone-300">
+                      Odun ateşinde taş fırın İtalyan pizzası, taze hamur ve özel malzemeler.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <a
+                      href="https://www.google.com/maps/dir/?api=1&destination=40.9858,29.0270"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex-1 py-1.5 px-3 rounded-lg bg-red-600 hover:bg-red-700 text-white font-black text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs"
+                    >
+                      <Navigation className="w-3.5 h-3.5" /> Rota Çiz
+                    </a>
+                    <a
+                      href="https://www.instagram.com/fornodiromatr/"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="py-1.5 px-3 rounded-lg bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 text-white font-black text-xs flex items-center justify-center gap-1 transition-all shadow-xs"
+                    >
+                      Instagram
+                    </a>
+                  </div>
+                </div>
+
+                {/* 2. Gusto Napoletano Bakırköy */}
+                <div className="p-3.5 rounded-xl bg-stone-900/90 border border-stone-800 flex flex-col justify-between space-y-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-extrabold text-sm sm:text-base text-white">Gusto Napoletano</h4>
+                      <span className="text-[11px] font-bold text-amber-300 bg-amber-950/80 px-2 py-0.5 rounded border border-amber-800">
+                        {userLocation
+                          ? `📍 ${formatDistance(calculateDistanceKm(userLocation.latitude, userLocation.longitude, 40.9782, 28.8722))}`
+                          : "📍 Bakırköy / İncirli"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-stone-300">
+                      Orijinal Napoli pizzası, özel fermante hamur ve taze İtalyan peynirleri.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <a
+                      href="https://www.google.com/maps/dir/?api=1&destination=40.9782,28.8722"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex-1 py-1.5 px-3 rounded-lg bg-red-600 hover:bg-red-700 text-white font-black text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs"
+                    >
+                      <Navigation className="w-3.5 h-3.5" /> Rota Çiz
+                    </a>
+                    <a
+                      href="https://www.instagram.com/gustonapoletano.bakirkoy/"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="py-1.5 px-3 rounded-lg bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 text-white font-black text-xs flex items-center justify-center gap-1 transition-all shadow-xs"
+                    >
+                      Instagram
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Results Header with Day Tabs on Top Right */}
           <div className="results-heading flex flex-col md:flex-row md:items-end justify-between gap-4 pb-2">
             <div>
+              {/* Sade ve Şık Sıralama Rozeti */}
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-50 text-red-700 font-extrabold text-xs border border-red-200 mb-2">
+                <MapPin className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                <span>En yakından en uzağa göre sıralandı</span>
+              </div>
+
               <p className="eyebrow uppercase font-bold tracking-wider text-red-600">
                 {city} {district !== "Tümü" ? `· ${district}` : "· TÜM İLÇELER"}
               </p>
@@ -833,6 +966,168 @@ export default function Home() {
               </div>
             </div>
           )}
+        </div>
+      </section>
+
+      {/* Sağlık Portalı & İnteraktif Eczane Araçları (Interactive Health Portal Bento) */}
+      <section className="py-14 bg-gradient-to-b from-slate-50 to-white border-t border-slate-200" id="saglik-portali-araclari">
+        <div className="container max-w-6xl mx-auto px-4">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold mb-2">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                TÜRKİYE SAĞLIK & ECZANE PORTALI
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900">
+                Eczane & Sağlık Yardımcı Araçları
+              </h2>
+              <p className="text-sm sm:text-base text-slate-600 mt-1 max-w-2xl">
+                SGK katkı payı hesaplama, anlık şehir polen ve hava kalitesi durumu, TİTCK ilaç toplatma bültenleri ve Kızılay kan bağış rehberi.
+              </p>
+            </div>
+
+            <Link
+              href="/saglik-araclari"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-sm shadow-md transition-all shrink-0 self-start md:self-auto"
+            >
+              <span>Tüm Araçları Aç</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {/* Card 1: SGK Katkı Payı */}
+            <Link
+              href="/saglik-araclari"
+              className="group p-6 rounded-2xl bg-white border border-slate-200 hover:border-emerald-500 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+            >
+              <div>
+                <div className="w-12 h-12 rounded-xl bg-emerald-100 group-hover:bg-emerald-600 text-emerald-700 group-hover:text-white flex items-center justify-center transition-all mb-4">
+                  <Calculator className="w-6 h-6" />
+                </div>
+                <h3 className="text-base font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
+                  SGK Katkı Payı & Eşdeğer Farkı
+                </h3>
+                <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                  Reçetenizdeki ilaçların çalışan (%20) veya emekli (%10) katkı payını, muayene ücretini ve eşdeğer taban fiyat farkını anında hesaplayın.
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-700">
+                <span>Hesaplama Motoru</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+
+            {/* Card 2: Polen & Hava Kalitesi */}
+            <Link
+              href="/saglik-araclari"
+              className="group p-6 rounded-2xl bg-white border border-slate-200 hover:border-cyan-500 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+            >
+              <div>
+                <div className="w-12 h-12 rounded-xl bg-cyan-100 group-hover:bg-cyan-600 text-cyan-700 group-hover:text-white flex items-center justify-center transition-all mb-4">
+                  <Wind className="w-6 h-6" />
+                </div>
+                <h3 className="text-base font-bold text-slate-900 group-hover:text-cyan-700 transition-colors">
+                  Polen & Hava Kalitesi İndeksi
+                </h3>
+                <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                  81 il için anlık AQI hava kirliliği, ağaç/çim polen yoğunluğu, astım ve alerjik rinit hastaları için uzman klinik sağlık önerileri.
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-cyan-700">
+                <span>Canlı Risk Durumu</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+
+            {/* Card 3: TİTCK İlaç Geri Çekme */}
+            <Link
+              href="/saglik-araclari"
+              className="group p-6 rounded-2xl bg-white border border-slate-200 hover:border-amber-500 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+            >
+              <div>
+                <div className="w-12 h-12 rounded-xl bg-amber-100 group-hover:bg-amber-600 text-amber-700 group-hover:text-white flex items-center justify-center transition-all mb-4">
+                  <ShieldAlert className="w-6 h-6" />
+                </div>
+                <h3 className="text-base font-bold text-slate-900 group-hover:text-amber-700 transition-colors">
+                  TİTCK İlaç Geri Çekme Bildirimleri
+                </h3>
+                <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                  Sağlık Bakanlığı tarafından duyurulan 1. ve 2. sınıf toplatma kararları, etkilenen parti numaraları ve sahte ilaç uyarıları.
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-amber-700">
+                <span>Resmi Bülten Sorgula</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+
+            {/* Card 4: İlaç & Besin Etkileşimi */}
+            <Link
+              href="/saglik-araclari"
+              className="group p-6 rounded-2xl bg-white border border-slate-200 hover:border-indigo-500 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+            >
+              <div>
+                <div className="w-12 h-12 rounded-xl bg-indigo-100 group-hover:bg-indigo-600 text-indigo-700 group-hover:text-white flex items-center justify-center transition-all mb-4">
+                  <Pill className="w-6 h-6" />
+                </div>
+                <h3 className="text-base font-bold text-slate-900 group-hover:text-indigo-700 transition-colors">
+                  İlaç-Besin Etkileşim Kontrolü
+                </h3>
+                <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                  Ağrı kesici, antibiyotik veya tansiyon ilaçlarının alkol, greyfurt, süt ve kahve ile etkileşim riskini tek tıkla sorgulayın.
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-indigo-700">
+                <span>Etkileşim Testi</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+
+            {/* Card 5: Kızılay Kan Bağışı */}
+            <Link
+              href="/saglik-araclari"
+              className="group p-6 rounded-2xl bg-white border border-slate-200 hover:border-red-500 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+            >
+              <div>
+                <div className="w-12 h-12 rounded-xl bg-red-100 group-hover:bg-red-600 text-red-700 group-hover:text-white flex items-center justify-center transition-all mb-4">
+                  <Droplets className="w-6 h-6" />
+                </div>
+                <h3 className="text-base font-bold text-slate-900 group-hover:text-red-700 transition-colors">
+                  Kızılay Kan Bağışı & Uyumluluk
+                </h3>
+                <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                  Kan grupları uyumluluk matrisi, kimden alınır kime verilir rehberi, bağış kriterleri ve en yakın Kızılay kan merkezleri.
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-red-700">
+                <span>Kan Merkezleri & Matris</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+
+            {/* Card 6: 7/24 Acil İlk Yardım */}
+            <Link
+              href="/saglik-araclari"
+              className="group p-6 rounded-2xl bg-white border border-slate-200 hover:border-rose-500 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+            >
+              <div>
+                <div className="w-12 h-12 rounded-xl bg-rose-100 group-hover:bg-rose-600 text-rose-700 group-hover:text-white flex items-center justify-center transition-all mb-4">
+                  <HeartPulse className="w-6 h-6" />
+                </div>
+                <h3 className="text-base font-bold text-slate-900 group-hover:text-rose-700 transition-colors">
+                  7/24 Acil İlk Yardım Rehberi
+                </h3>
+                <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                  Heimlich manevrası, yanık ilk müdahalesi, kalp krizi belirtileri ve 114 UZEM zehirlenme acil protokolleri.
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-rose-700">
+                <span>Acil Rehberi Aç</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+          </div>
         </div>
       </section>
 

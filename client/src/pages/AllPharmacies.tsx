@@ -24,7 +24,10 @@ import {
 import {
   calculateDistanceKm,
   formatDistance,
+  TURKEY_CITY_COORDINATES,
+  TURKEY_DISTRICT_COORDINATES,
 } from "@/lib/turkeyGeoData";
+import { toTurkishSlug } from "@shared/turkeyDistricts";
 import { toast } from "sonner";
 
 function formatCleanPhone(phoneStr?: string | null): string {
@@ -144,7 +147,20 @@ export default function AllPharmacies() {
   const loadPharmacies = async (city: string, dist: string) => {
     setLoading(true);
     try {
-      const data = await fetchDutyPharmaciesAuto(city, dist);
+      let refLoc = userLocation;
+      if (!refLoc) {
+        const cSlug = toTurkishSlug(city);
+        const dSlug = toTurkishSlug(dist);
+        if (dist !== "Tümü" && TURKEY_DISTRICT_COORDINATES[cSlug]?.[dSlug]) {
+          const dCoords = TURKEY_DISTRICT_COORDINATES[cSlug][dSlug];
+          refLoc = { latitude: dCoords.lat, longitude: dCoords.lng };
+        } else if (TURKEY_CITY_COORDINATES[cSlug]) {
+          const cCoords = TURKEY_CITY_COORDINATES[cSlug];
+          refLoc = { latitude: cCoords.lat, longitude: cCoords.lng };
+        }
+      }
+
+      const data = await fetchDutyPharmaciesAuto(city, dist, refLoc);
       if (data && data.days && data.days.length > 0) {
         // Collect all unique pharmacies from the fetched days
         const allList: RawPharmacy[] = [];
@@ -223,14 +239,8 @@ export default function AllPharmacies() {
   }, [pharmacies, searchTerm]);
 
   return (
-    <main className="min-h-screen bg-gray-50/50 pb-16">
-      <PageIntro
-        eyebrow="TÜRKİYE ECZANE REHBERİ"
-        title="81 İl Eczane Sorgulama & Rehber"
-        description="Türkiye genelindeki tüm eczaneleri il, ilçe veya anlık GPS konumunuz ile hızlıca bulun, telefonla arayın veya yol tarifi alın."
-      />
-
-      <div className="container max-w-6xl mt-6">
+    <main className="min-h-screen bg-gray-50/50 pb-16 pt-4">
+      <div className="container max-w-6xl">
         {/* Search & Control Card */}
         <div className="bg-white p-5 sm:p-6 rounded-2xl border border-gray-200 shadow-xs mb-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-4">

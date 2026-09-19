@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Check,
   Clock3,
@@ -18,9 +18,11 @@ import {
   Radio,
   FileText,
   AlertCircle,
+  Globe2,
 } from "lucide-react";
 import { PageIntro, SectionHeading } from "@/components/SiteLayout";
 import { useQuota } from "@/hooks/useQuota";
+import { fetchLiveWHOIndicators, TURKEY_WHO_INDICATORS, WHOGHOIndicator } from "@/lib/whoService";
 import citiesData from "@shared/cities.json";
 
 interface CityMeta {
@@ -47,6 +49,16 @@ export default function DataSources() {
   const totalRegisteredPharmacies = useMemo(() => {
     return allCities.reduce((acc, c) => acc + (c.pharmaciesCount || 0), 0) || 28500;
   }, [allCities]);
+
+  const [whoIndicators, setWhoIndicators] = useState<WHOGHOIndicator[]>(TURKEY_WHO_INDICATORS);
+
+  useEffect(() => {
+    fetchLiveWHOIndicators().then((data) => {
+      if (data && data.length > 0) {
+        setWhoIndicators(data);
+      }
+    });
+  }, []);
 
   const filteredCities = useMemo(() => {
     if (!searchTerm.trim()) return allCities;
@@ -137,6 +149,24 @@ export default function DataSources() {
         "İstanbul Eczacı Odası (İEO) Nöbet Çizelgesi",
         "Ankara Eczacı Odası Nöbet Otomasyonu",
         "İzmir Eczacı Odası Canlı Nöbet Listesi",
+      ],
+    },
+    {
+      id: "who-gho",
+      name: "WHO GHO OData API (Dünya Sağlık Örgütü)",
+      badge: "Küresel Sağlık Göstergeleri",
+      badgeColor: "bg-cyan-50 text-cyan-800 border-cyan-200",
+      status: "OData Canlı Entegrasyon",
+      statusColor: "text-cyan-600 bg-cyan-500",
+      capacity: "1000+ Sağlık Göstergesi / OData v4",
+      rateLimit: "Açık Protokol",
+      cacheStrategy: "Yıllık / Dönemsel Resmi Raporlar",
+      description:
+        "Dünya Sağlık Örgütü (WHO) Global Health Observatory veritabanına OData protokolü üzerinden erişir. Türkiye'ye ait beklenen yaşam süresi, hekim/eczacı yoğunluğu, bağışıklama ve hastane yatağı göstergelerini sunar.",
+      endpoints: [
+        "GET /api/WHOSIS_000001?$filter=SpatialDim eq 'TUR'",
+        "GET /api/Dimension/COUNTRY/DimensionValues",
+        "GET /api/Indicator",
       ],
     },
     {
@@ -335,6 +365,86 @@ export default function DataSources() {
                       ))}
                     </div>
                   </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* WHO GHO OData API — Türkiye Sağlık Göstergeleri */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8 mb-10 shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-gray-100">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-xl bg-cyan-50 text-cyan-700 flex items-center justify-center font-bold shrink-0">
+                  <Globe2 size={26} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xl sm:text-2xl font-black text-gray-900">
+                      WHO GHO OData API · Türkiye Sağlık Göstergeleri
+                    </h3>
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-cyan-50 text-cyan-800 border border-cyan-200">
+                      OData v4 Protokolü
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Dünya Sağlık Örgütü (WHO) Global Health Observatory resmi veri havuzundan Türkiye'ye ait temel sağlık ve eczacılık istatistikleri.
+                  </p>
+                </div>
+              </div>
+
+              <a
+                href="https://ghoapi.azureedge.net/api/Indicator"
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs font-bold text-cyan-700 hover:text-cyan-900 flex items-center gap-1 bg-cyan-50/80 px-3 py-1.5 rounded-xl border border-cyan-200 w-fit"
+              >
+                <span>WHO GHO OData Uç Noktası</span>
+                <ArrowUpRight size={14} />
+              </a>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+              {whoIndicators.map((ind) => (
+                <div
+                  key={ind.code}
+                  className="p-4 bg-gray-50/90 rounded-2xl border border-gray-200 flex flex-col justify-between hover:border-cyan-300 hover:bg-white transition-all shadow-2xs"
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <span className="text-[10px] font-black uppercase text-cyan-800 bg-cyan-100/70 px-2 py-0.5 rounded">
+                        {ind.category}
+                      </span>
+                      <span className="text-[10px] font-bold text-gray-400 font-mono">
+                        {ind.code}
+                      </span>
+                    </div>
+
+                    <h4 className="font-bold text-gray-900 text-sm leading-snug mb-2">
+                      {ind.name}
+                    </h4>
+
+                    <div className="flex items-baseline gap-2 my-2">
+                      <span className="text-2xl font-black text-cyan-900 font-mono">
+                        {ind.turkeyValue}
+                      </span>
+                      <span className="text-xs font-semibold text-gray-500">
+                        {ind.unit}
+                      </span>
+                      <span className="text-[10px] text-gray-400 font-mono ml-auto">
+                        ({ind.year})
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-gray-600 leading-relaxed mt-2">
+                      {ind.description}
+                    </p>
+                  </div>
+
+                  {ind.globalComparison && (
+                    <div className="mt-3 pt-2.5 border-t border-gray-200/80 text-[11px] font-bold text-cyan-800">
+                      🌐 {ind.globalComparison}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

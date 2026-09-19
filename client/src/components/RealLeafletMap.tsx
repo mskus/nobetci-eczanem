@@ -232,25 +232,10 @@ export function RealLeafletMap({
 
   return (
     <div className="map-preview" aria-label="Nöbetçi eczane harita görünümü">
-      <div className="map-topbar">
-        <span className="map-title">
-          <MapPin size={18} /> {areaTitle}
-        </span>
-        <div className="flex items-center gap-2">
-          {userLocation && (
-            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
-              📍 Konumunuz Aktif
-            </span>
-          )}
-          <span className="map-status">
-            <span className="status-dot" /> {pharmacies.length} nöbetçi
-          </span>
-        </div>
-      </div>
       <div
         ref={mapContainerRef}
-        className="map-canvas w-full h-[523px] relative z-0"
-        style={{ minHeight: "450px" }}
+        className="map-canvas w-full h-[480px] sm:h-[520px] relative z-0"
+        style={{ minHeight: "400px" }}
       />
     </div>
   );

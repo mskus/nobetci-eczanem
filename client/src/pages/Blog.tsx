@@ -13,16 +13,30 @@ import {
   MapPin,
   CheckCircle2,
   Share2,
+  Stethoscope,
+  Pill,
+  Smartphone,
+  ExternalLink,
+  Flame,
+  AlertTriangle,
+  Info,
+  DollarSign,
+  Tag,
+  Barcode,
+  Check,
+  X,
+  HeartPulse,
 } from "lucide-react";
-import { PageIntro } from "@/components/SiteLayout";
 import { toast } from "sonner";
+import { MEDICINES_DATABASE, MedicineItem } from "@/lib/medicineData";
+import { PAINKILLER_GUIDE } from "@/lib/painkillerData";
 
 interface Article {
   id: string;
   slug: string;
   title: string;
   excerpt: string;
-  category: "Mevzuat & Saatler" | "SGK & e-Reçete" | "Acil Sağlık" | "Şehir Rehberleri";
+  category: "Reçete & Mevzuat" | "İlaç Fiyat & Kullanım" | "Acil Sağlık & Çocuk" | "e-Devlet & MHRS";
   readTime: string;
   date: string;
   keywords: string[];
@@ -39,148 +53,164 @@ interface Article {
 
 export const ARTICLES_DATA: Article[] = [
   {
-    id: "1",
-    slug: "nobetci-eczane-calisma-saatleri-ve-nobet-devir-sistemi",
-    title: "2026 Nöbetçi Eczane Çalışma Saatleri ve Nöbet Devir Sistemi",
-    excerpt: "Nöbetçi eczaneler kaça kadar açık? Sabah nöbet devir saati kaçtır? Hafta sonu ve bayramlarda nöbet kuralları hakkında kapsamlı rehber.",
-    category: "Mevzuat & Saatler",
-    readTime: "4 dk okuma",
+    id: "receteli-recetesiz-rehber",
+    slug: "hangi-ilaclar-receteli-hangi-ilaclar-recetesiz-satilir",
+    title: "Hangi İlaçlar Reçeteli, Hangileri Reçetesiz (OTC) Satılır? 2026 Mevzuat Rehberi",
+    excerpt: "Antibiyotikler neden reçetesiz satılamaz? Reçetesiz alınabilen ağrı kesiciler, vitaminler, kremler ve SGK geri ödeme kapsamındaki kurallar.",
+    category: "Reçete & Mevzuat",
+    readTime: "5 dk okuma",
     date: "19 Eylül 2026",
-    keywords: ["nöbetçi eczane çalışma saatleri", "nöbet devir saati", "nöbetçi eczaneler kaça kadar açık", "sabah 09:00 nöbet"],
+    keywords: ["reçetesiz satılan ilaçlar", "reçeteli ilaçlar listesi", "otc ilaçlar", "antibiyotik reçetesiz alınır mı"],
     content: {
-      intro: "Türkiye'de 6197 sayılı Eczacılar ve Eczaneler Hakkında Kanun uyarınca, halkın kesintisiz ilaç erişimini sağlamak için nöbetçi eczane sistemi uygulanır. Normal çalışma saatlerinin sona erdiği andan itibaren belirlenen nöbetçi eczaneler hizmet verir.",
+      intro: "Türkiye'de 1262 sayılı İspençiyari ve Tıbbi Müstahzarlar Kanunu ve Sağlık Bakanlığı TİTCK mevzuatına göre ilaçlar reçete zorunluluğuna göre sınıflara ayrılır.",
       sections: [
         {
-          heading: "Nöbetçi Eczane Saatleri Nasıl Belirlenir?",
-          body: "Hafta içi ve cumartesi günleri normal eczaneler akşam 19:00'da (bazı illerde 18:00 veya 18:30) mesaisini tamamlar. Bu saatten itibaren o bölgenin nöbetçi eczaneleri görevi devralır ve ertesi gün sabah saat 09:00'a kadar aralıksız hizmet verir.",
+          heading: "1. Reçetesiz Satılabilen İlaçlar (OTC Grubu)",
+          body: "Hafif sağlık sorunlarında halk sağlığını tehlikeye atmayacak, bağımlılık yapma veya organ toksisitesi riski düşük ilaçlar reçetesiz serbestçe eczanelerden alınabilir.",
           highlights: [
-            "Hafta İçi & Cumartesi: Akşam mesai bitiminden ertesi sabah 09:00'a kadar",
-            "Pazar Günleri: Sabah 09:00'dan pazartesi sabah 09:00'a kadar 24 saat kesintisiz",
-            "Resmi ve Dini Bayramlar: Tam gün 24 saat nöbet sistemi geçerlidir",
+            "Parasetamol içerikli basit ağrı kesiciler ve ateş düşürücüler (Parol, Minoset vb.)",
+            "Mide asit giderici şuruplar ve çiğneme tabletleri (Gaviscon, Rennie, Talcid)",
+            "Boğaz pastilleri, antiseptik gargaralar ve burun açıcı deniz suyu spreyleri",
+            "D vitamini, C vitamini, çinko, multivitamin ve mineral destekleri",
+            "Cilt pişik ve yara bakım kremleri (Bepanthol, Madecassol, Hametan)",
           ],
         },
         {
-          heading: "Sabah 09:00 Nöbet Devri Neden Önemlidir?",
-          body: "Sabah saat tam 09:00'da tüm serbest eczaneler kepenk açar ve normal mesaiye başlar. Dolayısıyla bir önceki gecenin nöbet listesi sabah 09:00 itibarıyla sona erer. Eğer sabah 09:00'dan sonra ilaç alacaksanız, herhangi bir açık eczaneye gidebilirsiniz.",
+          heading: "2. Kesinlikle Reçeteyle Satılan İlaçlar (Reçetesiz Satışı Yasak)",
+          body: "Yanlış veya kontrolsüz kullanımında direnç gelişimi, organ hasarı veya bağımlılık oluşturabilecek ilaçlar hekim reçetesi olmadan verilemez.",
+          highlights: [
+            "Tüm Sistemik Antibiyotikler ve Antifungaller (Reçetesiz satılması yasal olarak suçtur)",
+            "Kalp, Tansiyon, Ritim Düzenleyici ve Kolesterol İlaçları",
+            "Şeker Hastalığı (Diyabet) İlaçları ve İnsülin Çeşitleri",
+            "Kortizonlu Tabletler ve İğneler",
+            "Yeşil ve Kırmızı Reçeteye Tabi Psikiyatrik ve Narkotik İlaçlar",
+          ],
         },
       ],
       faq: [
         {
-          q: "Pazar günü gündüz eczaneler açık mı?",
-          a: "Pazar günleri yalnızca o gün için görevlendirilen nöbetçi eczaneler açıktır. Normal eczaneler pazar günü kapalıdır.",
-        },
-        {
-          q: "Nöbet listesi gün içinde değişir mi?",
-          a: "Nöbet listeleri İl Sağlık Müdürlükleri ve Eczacı Odaları tarafından aylık olarak belirlenir ve olağanüstü durumlar haricinde gün içinde değişmez.",
+          q: "Reçetesiz aldığım ilacı SGK öder mi?",
+          a: "Hayır. SGK geri ödemesinden yararlanmak için ilacın yetkili hekim tarafından MEDULA sistemine e-reçete olarak girilmiş olması şarttır.",
         },
       ],
     },
   },
   {
-    id: "2",
-    slug: "nobetci-eczaneden-erecete-ve-raporlu-ilac-nasil-alinir",
-    title: "Gece Acil İlaç Temini: Nöbetçi Eczaneden e-Reçete ve Raporlu İlaç Alma Rehberi",
-    excerpt: "Hastanelerin acil servisinden yazılan e-reçeteler nöbetçi eczanelerde nasıl sorgulanır? Kronik raporlu ilaçlar ve katkı payı kuralları.",
-    category: "SGK & e-Reçete",
+    id: "cocuklarda-ates-dusurucu-doz",
+    slug: "cocuklarda-ve-bebeklerde-ates-dusurucu-surup-doz-tablosu",
+    title: "Çocuklarda ve Bebeklerde Ateş Düşürücü Şurup Doz Tablosu & Kilo Hesabı",
+    excerpt: "Parasetamol ve İbuprofen şuruplar kaç ölçek verilmeli? Kilo başına miligram hesabı, dönüşümlü ateş düşürücü verme kuralları ve acil uyarılar.",
+    category: "Acil Sağlık & Çocuk",
+    readTime: "6 dk okuma",
+    date: "19 Eylül 2026",
+    keywords: ["çocuklarda ateş düşürücü doz", "parol şurup kaç ölçek", "calpol dolven dönüşümlü", "bebeklerde ateş 38.5"],
+    content: {
+      intro: "Çocuklarda ateş düşürücü verirken çocuğun yaşı değil, vücut ağırlığı (kilosu) esas alınmalıdır. Yanlış doz vermek yetersiz tedaviye veya karaciğer/böbrek yüküne yol açabilir.",
+      sections: [
+        {
+          heading: "1. Parasetamol Şurup Dozu (10 - 15 mg / kg)",
+          body: "Parasetamol (Calpol, Parol, Minoset şurup vb.) çocuğun her kilogramı için tek dozda 10-15 mg hesaplanır. Günde 4 saatten sık aralıklarla verilmemelidir (maksimum 4-5 doz).",
+          highlights: [
+            "8-10 kg Çocuk: Tek dozda yarım - 1 ölçek (120 mg/5ml)",
+            "11-15 kg Çocuk: Tek dozda 1 - 1.5 ölçek (5-7.5 ml)",
+            "16-20 kg Çocuk: Tek dozda 1.5 - 2 ölçek (7.5-10 ml)",
+            "20 kg Üzeri: Calpol 6 Plus veya 250mg/5ml formları tercih edilebilir",
+          ],
+        },
+        {
+          heading: "2. İbuprofen Şurup Dozu (5 - 10 mg / kg)",
+          body: "İbuprofen (Dolven, İbofen, Pedifen vb.) 6 aydan büyük bebeklerde ve tok karnına verilmelidir. 6-8 saatte bir tekrarlanabilir.",
+        },
+        {
+          heading: "3. Dönüşümlü İlaç Verme Kuralı",
+          body: "Ateş düşürücüler ancak inatçı 39°C üzeri ve tek ilaçla kontrol altına alınamayan durumlarda, hekim onayıyla 4 saatte bir parasetamol ve ibuprofen sırayla verilebilir.",
+        },
+      ],
+    },
+  },
+  {
+    id: "gece-dis-agrisi-cozum",
+    slug: "gece-aniden-baslayan-dis-agrisina-acil-cozum-ve-ilac-rehberi",
+    title: "Gece Aniden Başlayan Zonklayıcı Diş Ağrısına Acil Müdahale & Nöbetçi Eczane İlaçları",
+    excerpt: "Gece uykudan uyandıran iltihaplı diş ağrısına hangi ağrı kesici iyi gelir? Gargara, karanfil yağı ve nöbetçi eczane çözümleri.",
+    category: "Acil Sağlık & Çocuk",
+    readTime: "4 dk okuma",
+    date: "18 Eylül 2026",
+    keywords: ["gece diş ağrısı", "diş ağrısına hangi ağrı kesici", "arveles diş ağrısı", "24 saat açık nöbetçi eczane"],
+    content: {
+      intro: "Gece yatay pozisyona geçildiğinde baş bölgesindeki kan basıncının artması, diş pulpası içindeki iltihabın şiddetli zonklamasına neden olur.",
+      sections: [
+        {
+          heading: "1. En Etkili Ağrı Kesici Tercihleri",
+          body: "Diş ve diş eti kaynaklı akut ağrılarda hızlı emilen NSAİİ grubu ağrı kesiciler (Deksketoprofen - Arveles 25mg, Flurbiprofen - Majezik 100mg veya Naproksen - Apranax Fort) ilk tercihtir.",
+          highlights: [
+            "İlacı kesinlikle ağrıyan dişin üzerine koymayın veya ezmeyin (diş etini yakar ve kimyasal ülser yapar)",
+            "İlaç bol su ile yutulmalı ve mide korunmalıdır",
+            "Tuzlu ve ılık suyla ağzı çalkalamak lokal basıncı ve bakterileri hafifletir",
+            "Başınızı yüksekte tutacak 2 yastıkla uyumayı tercih edin",
+          ],
+        },
+      ],
+    },
+  },
+  {
+    id: "insulin-soguk-zincir",
+    slug: "insulin-ve-asi-gibi-soguk-zincir-ilaclarin-saklanma-kurallari",
+    title: "İnsülin, Aşı ve Göz Damlalarının Saklanması: Soğuk Zincir Kuralları (+2°C ile +8°C)",
+    excerpt: "Açılmamış insülin buzdolabının neresinde saklanır? Kullanımdaki insülin kalemi oda sıcaklığında kaç gün dayanır? Seyahatte taşıma yöntemleri.",
+    category: "İlaç Fiyat & Kullanım",
     readTime: "5 dk okuma",
     date: "18 Eylül 2026",
-    keywords: ["e-reçete nöbetçi eczane", "raporlu ilaç nöbetçi", "acil servis reçetesi", "SGK ilaç katkı payı"],
+    keywords: ["insülin buzdolabında nasıl saklanır", "soğuk zincir ilaçlar", "insülin oda sıcaklığı", "bozulan aşı belirtileri"],
     content: {
-      intro: "Gece saatlerinde acil servise başvuran hastaların en sık karşılaştığı ihtiyaç, hekimin sisteme girdiği e-reçeteyi nöbetçi eczaneden eksiksiz temin etmektir.",
+      intro: "Protein ve peptid yapılı biyolojik ilaçlar (insülinler, aşılar, bazı göz damlaları ve biyobenzerler) ısı değişimlerine karşı son derece hassastır.",
       sections: [
         {
-          heading: "e-Reçete Numarası ve T.C. Kimlik Kartı",
-          body: "Acil serviste muayene olduktan sonra doktorunuzun verdiği SMS e-reçete kodunu veya kağıt reçete barkodunu nöbetçi eczacıya iletmeniz yeterlidir. MEDULA SGK sistemi 7/24 nöbetçi eczanelerde aktiftir.",
+          heading: "1. Buzdolabında Saklama İlkeleri (+2°C ile +8°C)",
+          body: "Yedek ve açılmamış insülinler buzdolabının orta raflarında saklanmalıdır. Asla buzluğa, dondurucuya veya buzdolabı kapağına konulmamalıdır (kapak sık açıldığından sıcaklık dalgalanır).",
           highlights: [
-            "T.C. Kimlik Kartınızı mutlaka yanınızda bulundurun",
-            "Doktorunuzun yazdığı e-reçete kodunu (Örn: 2L4K89) hazır tutun",
-            "Kronik hastalık raporlu ilaçlarınızı rapor süresi bitmediyse nöbetçiden alabilirsiniz",
-          ],
-        },
-        {
-          heading: "Reçetesiz Satılan Acil Ürünler",
-          body: "Ateş düşürücü şuruplar, ağrı kesiciler, yanık kremleri, çocuk mamaları, serum fizyolojikler ve medikal pansuman ürünleri nöbetçi eczanelerden reçetesiz olarak da satın alınabilir.",
-        },
-      ],
-      faq: [
-        {
-          q: "Nöbetçi eczanede MEDULA sistemi çalışır mı?",
-          a: "Evet, SGK MEDULA provizyon sistemi nöbetçi eczaneler için 7/24 kesintisiz hizmet vermektedir.",
-        },
-      ],
-    },
-  },
-  {
-    id: "3",
-    slug: "nobetci-eczanelerde-ekstra-ucret-var-mi-fiyat-tarifesi",
-    title: "Nöbetçi Eczanelerde Ekstra Ücret Alınır mı? Yasal Haklarınız ve SGK Fiyatları",
-    excerpt: "Nöbetçi eczanelerde ilaçlar daha pahalı mı? Gece nöbet farkı veya ekstra servis bedeli alınması yasal mıdır?",
-    category: "Mevzuat & Saatler",
-    readTime: "3 dk okuma",
-    date: "17 Eylül 2026",
-    keywords: ["nöbetçi eczane fiyat farkı", "ilaç fiyatları nöbet", "gece nöbet ücreti", "eczane yasal haklar"],
-    content: {
-      intro: "Halk arasında yaygın bir yanılgı, nöbetçi eczanelerin gece hizmet verdikleri için ilaçları daha yüksek fiyata sattığı yönündedir. Bu bilgi tamamen yanlıştır.",
-      sections: [
-        {
-          heading: "T.C. Sağlık Bakanlığı ve SGK Sabit Fiyat Güvencesi",
-          body: "Türkiye'de tüm ilaç fiyatları Sağlık Bakanlığı İlaç ve Tıbbi Cihaz Kurumu (TİTCK) tarafından Resmi Gazete'de yayımlanan İlaç Fiyat Kararnamesi ile belirlenir. Gündüz satılan ilacın fiyatı ile gece nöbette satılan ilacın fiyatı kuruşu kuruşuna aynıdır.",
-          highlights: [
-            "Hiçbir nöbetçi eczane 'nöbet hizmet bedeli' veya 'gece açma farkı' talep edemez",
-            "SGK katkı payı ve muayene ücreti standart gündüz oranlarıyla aynıdır",
-            "Fiyat uyuşmazlığı durumunda ALO 184 SABİM hattına şikayette bulunabilirsiniz",
+            "Donmuş İnsülin Çöptür: Asla çözdürüp kullanmayınız; moleküler yapısı bozulmuştur",
+            "Kullanımdaki İnsülin Kalemi: Oda sıcaklığında (15-25°C) 28 gün boyunca güvenle saklanabilir",
+            "Soğuk İğne Ağrı Yapar: Enjeksiyondan önce kalemin oda sıcaklığına gelmesi beklenmelidir",
           ],
         },
       ],
     },
   },
   {
-    id: "4",
-    slug: "istanbul-ankara-izmir-en-yakin-nobetci-eczane-bulma",
-    title: "İstanbul, Ankara, İzmir ve 81 İlde En Yakın Nöbetçi Eczaneyi Bulma Taktikleri",
-    excerpt: "Metropollerde ve ilçelerde gece nöbetçi eczane ararken zaman kaybetmemek için canlı GPS ve dijital harita kullanımı.",
-    category: "Şehir Rehberleri",
+    id: "mhrs-randevu-rehberi",
+    slug: "mhrs-hastane-randevusu-nasil-alinir-e-devlet-alo-182",
+    title: "MHRS Hastane Randevusu Nasıl Alınır? (ALO 182, e-Devlet ve Mobil)",
+    excerpt: "Merkezi Hekim Randevu Sistemi (MHRS) üzerinden devlet ve şehir hastanelerine nasıl randevu alınır? ALO 182 arama adımları ve onaylı randevu sistemi.",
+    category: "e-Devlet & MHRS",
     readTime: "4 dk okuma",
-    date: "16 Eylül 2026",
-    keywords: ["istanbul nöbetçi eczane", "ankara nöbetçi eczane", "izmir nöbetçi eczane", "en yakın eczane navigasyon"],
+    date: "19 Eylül 2026",
+    keywords: ["mhrs randevu alma", "alo 182", "hastane randevusu e devlet", "onaylı randevu dönemi"],
     content: {
-      intro: "Özellikle büyükşehirlerde gece saatlerinde açık nöbetçi eczaneyi bulmak ve trafik yoğunluğuna takılmadan ulaşmak kritik önem taşır.",
+      intro: "Sağlık Bakanlığı'na bağlı devlet hastaneleri, eğitim ve araştırma hastaneleri ile şehir hastanelerinden poliklinik randevusu almak için MHRS altyapısı kullanılır.",
       sections: [
         {
-          heading: "Canlı GPS ile Otomatik Mesafe Sıralaması",
-          body: "Sitemizde yer alan 'Yakınımdaki Eczaneleri Bul (GPS)' özelliği, anlık konumunuzu alarak bulunduğunuz noktaya en yakın açık eczaneleri metre cinsinden sıralar. Doğrudan 'Yol Tarifi' butonuna basarak Google Haritalar navigasyonunu başlatabilirsiniz.",
-          highlights: [
-            "İstanbul'da 39 ilçede her gece ortalama 140-180 nöbetçi eczane görev yapar",
-            "Ankara'da 25 ilçede ortalama 60-80 nöbetçi eczane açıktır",
-            "İzmir'de 30 ilçede her gece 50-70 nöbetçi eczane hizmet verir",
-          ],
+          heading: "1. e-Devlet veya MHRS Web / Mobil Üzerinden Randevu",
+          body: "mhrs.gov.tr adresine girip 'e-Devlet ile Giriş' butonuna tıklayarak T.C. kimlik numaranız ve şifrenizle giriş yapabilirsiniz.",
         },
       ],
     },
   },
   {
-    id: "5",
-    slug: "alo-184-sabim-ve-bulunmayan-ilaclar-icin-cozumler",
-    title: "Nöbetçi Eczanede Aradığınız İlaç Yoksa Ne Yapmalısınız? ALO 184 ve Çözüm Yolları",
-    excerpt: "Gece nöbette kritik bir ilacı bulamadığınızda uygulayabileceğiniz alternatif yöntemler, eşdeğer ilaç kuralı ve Sağlık Bakanlığı iletişim kanalları.",
-    category: "Acil Sağlık",
+    id: "enabiz-nasil-girilir",
+    slug: "e-nabiz-sistemine-nasil-girilir-tahlil-ve-recete-sorgulama",
+    title: "e-Nabız Sistemine Nasıl Girilir? Tahlil Sonuçları, Reçete ve Rapor Sorgulama",
+    excerpt: "Sağlık geçmişiniz, kan tahlilleriniz, röntgen/MR sonuçlarınız ve geçmiş reçetelerinize e-Nabız üzerinden nasıl anında erişebilirsiniz?",
+    category: "e-Devlet & MHRS",
     readTime: "4 dk okuma",
-    date: "15 Eylül 2026",
-    keywords: ["ilaç bulamıyorum nöbetçi", "alo 184 sabim", "eşdeğer ilaç", "acil ilaç temini"],
+    date: "19 Eylül 2026",
+    keywords: ["e-nabız giriş", "kan tahlil sonucu öğrenme", "e-reçete barkod", "ilaç kullanım raporu"],
     content: {
-      intro: "Nadir bulunan veya piyasada dönemsel olarak tedarik sıkıntısı yaşanan ilaçlar için gece saatlerinde doğru adımları bilmek hayati önem taşır.",
+      intro: "e-Nabız, T.C. Sağlık Bakanlığı tarafından tüm vatandaşların sağlık verilerini tek bir güvenli panelde topladığı resmi kişisel sağlık kaydı sistemidir.",
       sections: [
         {
-          heading: "1. Eşdeğer (Muadil) İlaç Değerlendirmesi",
-          body: "Eczacınız, doktorunuzun yazdığı ilacın aynı etken maddeye, aynı doza ve aynı biyoyararlanıma sahip eşdeğerini size sunabilir. Türkiye'de ruhsatlı tüm eşdeğer ilaçlar orijinal ilaçla aynı tedavi edici güce sahiptir.",
-        },
-        {
-          heading: "2. Civar Nöbetçi Eczanelerle İletişim",
-          body: "Nöbetçi eczacılar bölgedeki diğer nöbetçi meslektaşlarıyla anlık iletişim halindedir. Eczacınızdan diğer nöbetçilerin stok durumunu sorgulamasını rica edebilirsiniz.",
-        },
-        {
-          heading: "3. ALO 184 SABİM Hattı",
-          body: "Sağlık Bakanlığı İletişim Merkezi (SABİM), kritik ve hayati ilaçların temininde vatandaşlara 7/24 danışmanlık hizmeti sağlamaktadır.",
+          heading: "e-Nabız'a Giriş Adımları",
+          body: "enabiz.gov.tr adresine veya mobil uygulamaya e-Devlet Kapısı ile Giriş seçeneğini kullanarak bağlanabilirsiniz.",
         },
       ],
     },
@@ -188,202 +218,471 @@ export const ARTICLES_DATA: Article[] = [
 ];
 
 export default function Blog() {
-  const [selectedCategory, setSelectedCategory] = useState<string>("Tümü");
+  const [activeTab, setActiveTab] = useState<"fiyatlar" | "recete" | "agrikesici" | "rehber">("fiyatlar");
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeArticle, setActiveArticle] = useState<Article | null>(null);
+  const [medicineCategory, setMedicineCategory] = useState<string>("Tümü");
+  const [prescriptionFilter, setPrescriptionFilter] = useState<string>("Tümü");
+  const [expandedArticle, setExpandedArticle] = useState<string | null>(null);
 
-  const categories = ["Tümü", "Mevzuat & Saatler", "SGK & e-Reçete", "Acil Sağlık", "Şehir Rehberleri"];
+  const medicineCategories = [
+    "Tümü",
+    "Ağrı Kesici & Ateş Düşürücü",
+    "Antibiyotik",
+    "Mide Koruyucu & Antiasit",
+    "Alerji & Antihistaminik",
+    "Kalp & Tansiyon",
+    "Diyabet & İnsülin",
+    "Vitamin & Mineral",
+    "Solunum & Astım",
+    "Göz & Kulak Damlası",
+  ];
 
-  const filteredArticles = useMemo(() => {
-    return ARTICLES_DATA.filter((article) => {
-      const matchCat = selectedCategory === "Tümü" || article.category === selectedCategory;
+  // Filtered medicines list for Price & Barcode database
+  const filteredMedicines = useMemo(() => {
+    return MEDICINES_DATABASE.filter((med) => {
+      const matchCat = medicineCategory === "Tümü" || med.category === medicineCategory;
+      const matchPresc = prescriptionFilter === "Tümü" || med.prescriptionType.includes(prescriptionFilter);
+      const q = searchTerm.toLocaleLowerCase("tr-TR");
       const matchSearch =
         !searchTerm.trim() ||
-        article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        article.excerpt.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        article.keywords.some((k) => k.toLowerCase().includes(searchTerm.toLowerCase()));
-      return matchCat && matchSearch;
+        med.name.toLocaleLowerCase("tr-TR").includes(q) ||
+        med.activeIngredient.toLocaleLowerCase("tr-TR").includes(q) ||
+        med.barcode.includes(q) ||
+        med.indications.toLocaleLowerCase("tr-TR").includes(q);
+
+      return matchCat && matchPresc && matchSearch;
     });
-  }, [selectedCategory, searchTerm]);
+  }, [medicineCategory, prescriptionFilter, searchTerm]);
+
+  // Filtered articles list
+  const filteredArticles = useMemo(() => {
+    if (!searchTerm.trim()) return ARTICLES_DATA;
+    const q = searchTerm.toLocaleLowerCase("tr-TR");
+    return ARTICLES_DATA.filter(
+      (art) =>
+        art.title.toLocaleLowerCase("tr-TR").includes(q) ||
+        art.excerpt.toLocaleLowerCase("tr-TR").includes(q) ||
+        art.keywords.some((k) => k.toLocaleLowerCase("tr-TR").includes(q))
+    );
+  }, [searchTerm]);
+
+  const copyShareLink = (slug: string) => {
+    navigator.clipboard?.writeText(`${window.location.origin}/#/blog#${slug}`);
+    toast.success("Rehber bağlantısı panoya kopyalandı!");
+  };
 
   return (
-    <main className="min-h-screen bg-gray-50/50 pb-16">
-      <PageIntro
-        eyebrow="BİLGİ BANKASI & SAĞLIK REHBERİ"
-        title="Nöbetçi Eczane ve İlaç Rehberi"
-        description="Türkiye'de nöbetçi eczane çalışma saatleri, acil e-reçete temini, ilaç fiyatlandırması ve mevzuat hakkında uzman makaleleri."
-      />
+    <main className="pb-16 bg-gray-50/50 min-h-screen">
+      
+      {/* Üst Sekme Seçici - Sade, Hızlı ve Başlıksız */}
+      <section className="bg-white border-b border-gray-200 py-4 px-4 sticky top-16 z-10 shadow-2xs">
+        <div className="container max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+            <button
+              type="button"
+              onClick={() => setActiveTab("fiyatlar")}
+              className={`px-4 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeTab === "fiyatlar"
+                  ? "bg-red-600 text-white shadow-xs"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              <DollarSign size={16} />
+              <span>İlaç Fiyatları & Barkod</span>
+            </button>
 
-      <div className="container max-w-6xl mt-6">
-        {/* Search & Filter Bar */}
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-xs mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-none">
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
-                  selectedCategory === cat
-                    ? "bg-red-600 text-white shadow-xs"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
+            <button
+              type="button"
+              onClick={() => setActiveTab("recete")}
+              className={`px-4 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeTab === "recete"
+                  ? "bg-emerald-600 text-white shadow-xs"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              <Tag size={16} />
+              <span>Reçeteli / Reçetesiz İlaçlar</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("agrikesici")}
+              className={`px-4 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeTab === "agrikesici"
+                  ? "bg-blue-600 text-white shadow-xs"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              <Pill size={16} />
+              <span>Ağrı Kesiciler Tablosu</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("rehber")}
+              className={`px-4 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeTab === "rehber"
+                  ? "bg-gray-900 text-white shadow-xs"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              <BookOpen size={16} />
+              <span>Sağlık & e-Devlet Rehberi</span>
+            </button>
           </div>
 
           <div className="relative w-full md:w-72">
-            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Konu veya anahtar kelime ara..."
+              placeholder="İlaç, barkod veya konu ara..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm font-semibold border border-gray-300 rounded-xl focus:outline-none focus:border-red-500 bg-gray-50/50 focus:bg-white"
+              className="w-full pl-9 pr-3 py-2 text-xs font-bold border border-gray-300 rounded-xl focus:outline-none focus:border-red-500 bg-gray-50 focus:bg-white"
             />
           </div>
         </div>
+      </section>
 
-        {/* Article Reader Modal / Full View */}
-        {activeArticle ? (
-          <article className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-10 shadow-sm mb-12">
-            <button
-              type="button"
-              onClick={() => setActiveArticle(null)}
-              className="button button-quiet text-xs font-bold py-1.5 px-3 mb-6 inline-flex items-center gap-1.5 cursor-pointer"
-            >
-              ← Tüm Makalelere Dön
-            </button>
+      <div className="container max-w-6xl mx-auto px-4 pt-6">
+        
+        {/* 1. İLAÇ FİYATLARI VE BARKOD VERİTABANI */}
+        {activeTab === "fiyatlar" && (
+          <div className="space-y-6 animate-fadeIn">
+            {/* Kategori ve Filtre Çubuğu */}
+            <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-1.5 overflow-x-auto">
+                {medicineCategories.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setMedicineCategory(cat)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                      medicineCategory === cat
+                        ? "bg-red-600 text-white shadow-2xs"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
 
-            <div className="flex flex-wrap items-center gap-2 mb-3">
-              <span className="text-xs font-black uppercase px-2.5 py-0.5 rounded-full bg-red-100 text-red-700">
-                {activeArticle.category}
-              </span>
-              <span className="text-xs text-gray-400 font-semibold flex items-center gap-1">
-                <Calendar size={13} /> {activeArticle.date}
-              </span>
-              <span className="text-xs text-gray-400 font-semibold flex items-center gap-1">
-                <Clock size={13} /> {activeArticle.readTime}
+              <span className="text-xs text-gray-500 font-bold">
+                Toplam <strong>{filteredMedicines.length}</strong> ilaç listeleniyor
               </span>
             </div>
 
-            <h1 className="text-2xl sm:text-4xl font-black text-gray-900 leading-tight mb-4">
-              {activeArticle.title}
-            </h1>
-
-            <p className="text-base sm:text-lg text-gray-600 font-medium leading-relaxed pb-6 border-b border-gray-100 mb-6">
-              {activeArticle.content.intro}
-            </p>
-
-            <div className="space-y-8 text-gray-800 leading-relaxed">
-              {activeArticle.content.sections.map((sec, i) => (
-                <section key={i}>
-                  <h2 className="text-xl sm:text-2xl font-black text-gray-900 mb-3">
-                    {sec.heading}
+            {/* İlaç Fiyat Tablosu */}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <DollarSign size={20} className="text-red-600" />
+                  <h2 className="text-base sm:text-lg font-black text-gray-900">
+                    TİTCK & SGK MEDULA Resmi İlaç Fiyat Listesi (KDV Dahil)
                   </h2>
-                  <p className="text-sm sm:text-base text-gray-700 leading-relaxed mb-4">
-                    {sec.body}
-                  </p>
-                  {sec.highlights && sec.highlights.length > 0 && (
-                    <div className="bg-red-50/70 border border-red-200 rounded-xl p-4 my-3 space-y-2">
-                      {sec.highlights.map((hl, hIdx) => (
-                        <div key={hIdx} className="flex items-start gap-2 text-xs sm:text-sm font-bold text-red-950">
-                          <CheckCircle2 size={16} className="text-red-600 shrink-0 mt-0.5" />
-                          <span>{hl}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </section>
-              ))}
-
-              {activeArticle.content.faq && (
-                <section className="mt-8 pt-6 border-t border-gray-100">
-                  <h3 className="text-lg sm:text-xl font-black text-gray-900 mb-4 flex items-center gap-2">
-                    <HelpCircle size={20} className="text-red-600" /> Sıkça Sorulan Sorular
-                  </h3>
-                  <div className="space-y-3">
-                    {activeArticle.content.faq.map((item, fIdx) => (
-                      <div key={fIdx} className="p-4 rounded-xl bg-gray-50 border border-gray-200">
-                        <strong className="block text-sm font-black text-gray-900 mb-1">
-                          {item.q}
-                        </strong>
-                        <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
-                          {item.a}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-            </div>
-
-            {/* Keyword tags */}
-            <div className="mt-10 pt-6 border-t border-gray-100 flex flex-wrap items-center gap-2">
-              <span className="text-xs font-bold text-gray-500">Etiketler:</span>
-              {activeArticle.keywords.map((k) => (
-                <span key={k} className="text-xs font-bold bg-gray-100 text-gray-700 px-2.5 py-1 rounded-md border border-gray-200">
-                  #{k}
+                </div>
+                <span className="text-[11px] font-bold text-gray-500">
+                  Eylül 2026 Güncel Veri
                 </span>
-              ))}
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr className="text-gray-700 font-extrabold uppercase text-[11px]">
+                      <th className="py-3 px-4">İlaç Adı & Üretici</th>
+                      <th className="py-3 px-4">Barkod (GTIN) & Etken Madde</th>
+                      <th className="py-3 px-4">Reçete Durumu</th>
+                      <th className="py-3 px-4 text-right">Perakende Fiyatı (PSF)</th>
+                      <th className="py-3 px-4 text-right">SGK Katkı Payı (~%10)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {filteredMedicines.map((med) => (
+                      <tr key={med.id} className="hover:bg-gray-50/80 transition-colors">
+                        <td className="py-3 px-4">
+                          <strong className="text-gray-900 font-black text-sm block">{med.name}</strong>
+                          <span className="text-[11px] text-gray-500">{med.manufacturer} · {med.category}</span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="font-mono font-bold text-gray-700 block">{med.barcode}</span>
+                          <span className="text-[11px] text-gray-600">{med.activeIngredient}</span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`inline-block text-[10px] font-black uppercase px-2 py-0.5 rounded ${
+                            med.prescriptionType.includes("Reçetesiz")
+                              ? "bg-emerald-100 text-emerald-900 border border-emerald-300"
+                              : "bg-amber-100 text-amber-900 border border-amber-300"
+                          }`}>
+                            {med.prescriptionType}
+                          </span>
+                          {med.isReimbursedBySGK && (
+                            <span className="block text-[10px] font-bold text-emerald-700 mt-0.5">
+                              ✓ SGK Geri Ödemeli
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono font-black text-sm text-gray-900">
+                          {med.publicSalePrice.toFixed(2)} ₺
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono font-bold text-xs text-red-700">
+                          ~{med.patientCopayEstimated.toFixed(2)} ₺
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="p-4 bg-gray-50 text-xs text-gray-600 border-t border-gray-100 flex items-start gap-2">
+                <Info size={16} className="text-gray-400 shrink-0 mt-0.5" />
+                <span>
+                  Fiyatlar Türkiye İlaç ve Tıbbi Cihaz Kurumu (TİTCK) resmi Fiyat Değerlendirme Komisyonu kararlarına ve SGK MEDULA eczane otomasyon sistemine uygundur. Reçeteli alımlarda SGK katkı payı emekliler için %10, çalışanlar için %20'dir.
+                </span>
+              </div>
             </div>
-          </article>
-        ) : (
-          /* Grid of Articles */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredArticles.map((art) => (
-              <article
-                key={art.id}
-                className="bg-white rounded-2xl border border-gray-200 p-6 flex flex-col justify-between shadow-xs hover:border-red-300 hover:shadow-md transition-all cursor-pointer group"
-                onClick={() => {
-                  setActiveArticle(art);
-                  window.scrollTo({ top: 200, behavior: "smooth" });
-                }}
-              >
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-3">
-                    <span className="text-[11px] font-black uppercase px-2.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">
-                      {art.category}
-                    </span>
-                    <span className="text-xs text-gray-400 font-semibold">{art.readTime}</span>
-                  </div>
-
-                  <h3 className="text-lg font-black text-gray-900 group-hover:text-red-600 transition-colors leading-snug mb-2">
-                    {art.title}
-                  </h3>
-
-                  <p className="text-xs sm:text-sm text-gray-600 leading-relaxed line-clamp-3">
-                    {art.excerpt}
-                  </p>
-                </div>
-
-                <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between">
-                  <span className="text-xs text-gray-400 font-medium">{art.date}</span>
-                  <span className="text-xs font-black text-red-600 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
-                    Okumaya Başla <ArrowRight size={14} />
-                  </span>
-                </div>
-              </article>
-            ))}
           </div>
         )}
 
-        {/* Quick Link to Main Duty Pharmacies */}
-        <div className="mt-12 p-8 rounded-2xl bg-gradient-to-r from-red-600 to-red-700 text-white flex flex-col sm:flex-row items-center justify-between gap-6 shadow-md">
-          <div>
-            <h3 className="text-xl sm:text-2xl font-black mb-1">
-              Şu anda açık nöbetçi eczaneleri görmek ister misiniz?
-            </h3>
-            <p className="text-xs sm:text-sm text-red-100 max-w-xl">
-              GPS konumunuzla veya 81 il seçimi yaparak en yakın açık nöbetçi eczaneleri canlı harita üzerinde listeleyebilirsiniz.
-            </p>
+        {/* 2. REÇETELİ VS REÇETESİZ İLAÇLAR KILAVUZU */}
+        {activeTab === "recete" && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              {/* Reçetesiz Serbest İlaçlar */}
+              <div className="bg-white rounded-2xl border border-emerald-200 p-6 shadow-sm">
+                <div className="flex items-center gap-2 pb-4 border-b border-gray-100 text-emerald-800">
+                  <CheckCircle2 size={24} className="text-emerald-600" />
+                  <div>
+                    <h3 className="text-lg font-black text-gray-900">Reçetesiz (OTC) Serbest İlaçlar</h3>
+                    <p className="text-xs text-gray-500">Doktor reçetesi olmadan eczaneden doğrudan temin edilebilir</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 mt-4 text-xs sm:text-sm">
+                  {MEDICINES_DATABASE.filter((m) => m.prescriptionType.includes("Reçetesiz")).map((m) => (
+                    <div key={m.id} className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-100">
+                      <div className="flex justify-between items-start">
+                        <strong className="font-black text-gray-900">{m.name}</strong>
+                        <span className="font-mono font-black text-emerald-800">{m.publicSalePrice.toFixed(2)} ₺</span>
+                      </div>
+                      <p className="text-xs text-gray-600 mt-1">{m.indications}</p>
+                      <span className="text-[11px] font-semibold text-emerald-900 mt-1 block">
+                        ✓ {m.usageInstructions}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Reçeteye Tabi İlaçlar */}
+              <div className="bg-white rounded-2xl border border-amber-200 p-6 shadow-sm">
+                <div className="flex items-center gap-2 pb-4 border-b border-gray-100 text-amber-800">
+                  <AlertTriangle size={24} className="text-amber-600" />
+                  <div>
+                    <h3 className="text-lg font-black text-gray-900">Reçeteli (Zorunlu) İlaçlar</h3>
+                    <p className="text-xs text-gray-500">Yasal zorunluluk: Yalnızca hekim reçetesiyle verilebilir</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 mt-4 text-xs sm:text-sm">
+                  {MEDICINES_DATABASE.filter((m) => !m.prescriptionType.includes("Reçetesiz")).map((m) => (
+                    <div key={m.id} className="p-3 bg-amber-50/60 rounded-xl border border-amber-100">
+                      <div className="flex justify-between items-start">
+                        <strong className="font-black text-gray-900">{m.name}</strong>
+                        <span className="font-mono font-black text-amber-900">{m.publicSalePrice.toFixed(2)} ₺</span>
+                      </div>
+                      <p className="text-xs text-gray-600 mt-1">{m.indications}</p>
+                      <span className="text-[11px] font-semibold text-amber-950 mt-1 block">
+                        ⚠️ {m.prescriptionWarning}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
           </div>
-          <Link href="/" className="button bg-white text-red-700 hover:bg-red-50 font-black text-sm px-6 py-3 rounded-xl shrink-0 whitespace-nowrap shadow-sm">
-            Nöbetçi Eczaneleri Bul <ArrowRight size={16} />
-          </Link>
-        </div>
+        )}
+
+        {/* 3. AĞRI KESİCİLER KARŞILAŞTIRMA TABLOSU */}
+        {activeTab === "agrikesici" && (
+          <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8 shadow-sm animate-fadeIn">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-xl bg-red-50 text-red-600 font-bold">
+                  <Pill size={24} />
+                </span>
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-black text-gray-900">
+                    Sık Kullanılan Ağrı Kesiciler Karşılaştırma Rehberi
+                  </h2>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Markalar, Etken Maddeler, Ne Zaman Alınır, Mideye Etkisi ve Yaklaşık Fiyat Aralıkları
+                  </p>
+                </div>
+              </div>
+
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-50 text-amber-900 border border-amber-200">
+                <AlertTriangle size={14} className="text-amber-600" />
+                Doktor & Eczacı Danışımı Önerilir
+              </span>
+            </div>
+
+            <div className="overflow-x-auto mt-6">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr className="text-gray-700 font-extrabold uppercase text-[11px]">
+                    <th className="py-3 px-4">İlaç / Marka</th>
+                    <th className="py-3 px-4">Etken Madde & Tür</th>
+                    <th className="py-3 px-4">Kullanım Alanı</th>
+                    <th className="py-3 px-4">Mideye Etkisi / Aç-Tok</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Resmi Eşdeğer Bant</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {PAINKILLER_GUIDE.map((p, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50/80 transition-colors">
+                      <td className="py-3.5 px-4 font-black text-gray-900 text-sm">
+                        {p.brand}
+                      </td>
+                      <td className="py-3.5 px-4 text-gray-700">
+                        <strong className="text-gray-900 block font-bold">{p.activeIngredient}</strong>
+                        <span className="text-[10px] text-gray-500">{p.category}</span>
+                      </td>
+                      <td className="py-3.5 px-4 text-gray-700 max-w-xs font-medium">
+                        {p.indications}
+                      </td>
+                      <td className="py-3.5 px-4 text-gray-700">
+                        <span className="font-semibold text-gray-900 block">{p.usageAdvice}</span>
+                        <span className="text-[11px] text-amber-900 bg-amber-50 px-1.5 py-0.2 rounded mt-0.5 inline-block">
+                          {p.stomachEffect}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <span className="font-mono font-black text-red-700 bg-red-50 border border-red-200 px-2 py-1 rounded-lg text-xs">
+                          {p.priceRange}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* 4. SAĞLIK & E-DEVLET MAKALELERİ */}
+        {activeTab === "rehber" && (
+          <div className="space-y-6 animate-fadeIn">
+            {filteredArticles.map((article) => {
+              const isExpanded = expandedArticle === article.id;
+
+              return (
+                <article
+                  key={article.id}
+                  id={article.slug}
+                  className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8 shadow-xs hover:border-gray-300 transition-all"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <span className="px-2.5 py-1 rounded-md text-[11px] font-black uppercase tracking-wider bg-red-50 text-red-700 border border-red-200">
+                      {article.category}
+                    </span>
+
+                    <div className="flex items-center gap-3 text-xs text-gray-500 font-semibold">
+                      <span className="flex items-center gap-1">
+                        <Calendar size={13} /> {article.date}
+                      </span>
+                      <span>·</span>
+                      <span className="flex items-center gap-1">
+                        <Clock size={13} /> {article.readTime}
+                      </span>
+                    </div>
+                  </div>
+
+                  <h3 className="text-xl sm:text-2xl font-black text-gray-900 leading-snug mb-3">
+                    {article.title}
+                  </h3>
+
+                  <p className="text-sm text-gray-600 leading-relaxed mb-4">
+                    {article.excerpt}
+                  </p>
+
+                  {/* Detaylı Açılır İçerik */}
+                  {isExpanded && (
+                    <div className="mt-6 pt-6 border-t border-gray-100 space-y-6 animate-fadeIn">
+                      <div className="p-4 bg-red-50/50 rounded-xl border border-red-100 text-sm font-semibold text-gray-800 leading-relaxed">
+                        {article.content.intro}
+                      </div>
+
+                      {article.content.sections.map((sec, sIdx) => (
+                        <div key={sIdx} className="space-y-2">
+                          <h4 className="text-base font-black text-gray-900">
+                            {sec.heading}
+                          </h4>
+                          <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
+                            {sec.body}
+                          </p>
+                          {sec.highlights && (
+                            <ul className="mt-2 space-y-1.5 pl-2">
+                              {sec.highlights.map((h, hIdx) => (
+                                <li key={hIdx} className="flex items-start gap-2 text-xs sm:text-sm text-gray-800 font-medium">
+                                  <CheckCircle2 size={15} className="text-emerald-600 shrink-0 mt-0.5" />
+                                  <span>{h}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      ))}
+
+                      {article.content.faq && article.content.faq.length > 0 && (
+                        <div className="mt-6 p-4 bg-gray-50 rounded-xl space-y-3">
+                          <h4 className="text-xs font-black uppercase text-gray-500">
+                            Sıkça Sorulan Sorular:
+                          </h4>
+                          {article.content.faq.map((f, fIdx) => (
+                            <div key={fIdx} className="space-y-1">
+                              <p className="text-xs sm:text-sm font-bold text-gray-900">
+                                S: {f.q}
+                              </p>
+                              <p className="text-xs sm:text-sm text-gray-600">
+                                C: {f.a}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Alt Aksiyon Çubuğu */}
+                  <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedArticle(isExpanded ? null : article.id)}
+                      className="button button-secondary text-xs font-black inline-flex items-center gap-1.5 py-2 px-3 rounded-xl cursor-pointer"
+                    >
+                      <span>{isExpanded ? "Rehberi Kapat" : "Detaylı Rehberi Oku"}</span>
+                      <ArrowRight size={14} className={isExpanded ? "rotate-90 transition-transform" : ""} />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => copyShareLink(article.slug)}
+                      className="text-gray-500 hover:text-gray-800 p-2 rounded-lg hover:bg-gray-100 text-xs font-bold flex items-center gap-1"
+                      title="Bağlantıyı Paylaş"
+                    >
+                      <Share2 size={14} /> Paylaş
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+
       </div>
     </main>
   );
