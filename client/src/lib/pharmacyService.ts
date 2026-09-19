@@ -40,6 +40,8 @@ export interface RawPharmacy {
   id: string;
   name: string;
   address: string | null;
+  landmark?: string | null;
+  addressDescription?: string | null;
   phone: string;
   phone2?: string | null;
   location: PharmacyLocation;

@@ -162,69 +162,100 @@ function MapPreview({
   );
 }
 
+function formatCleanPhone(phoneStr?: string | null): string {
+  if (!phoneStr) return "Telefon Et";
+  const digits = phoneStr.replace(/[^0-9]/g, "");
+  if (digits.length === 10) {
+    return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 8)} ${digits.slice(8, 10)}`;
+  } else if (digits.length === 11 && digits.startsWith("0")) {
+    return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7, 9)} ${digits.slice(9, 11)}`;
+  }
+  return phoneStr;
+}
+
 function FormattedAddress({
   address,
+  landmark: directLandmark,
+  addressDescription,
   district,
   city,
 }: {
   address: string;
+  landmark?: string | null;
+  addressDescription?: string | null;
   district?: string;
   city?: string;
 }) {
-  const raw = address || "";
+  const raw = (address || "").trim();
 
-  // Extract landmark / tarif in parentheses like "(Devlet Hastanesi Acil Karşısı)"
-  const landmarkMatch = raw.match(/\(([^)]+)\)/);
-  const landmark = landmarkMatch ? landmarkMatch[1] : null;
-  const withoutLandmark = raw.replace(/\([^)]+\)/, "").trim();
+  // 1. Extract explicit landmark or parentheses / Tarif text
+  let landmarkText = directLandmark || addressDescription || null;
 
-  // Split by comma
-  const rawParts = withoutLandmark.split(",").map((s) => s.trim()).filter(Boolean);
+  if (!landmarkText) {
+    const pMatch = raw.match(/\(([^)]+)\)/);
+    if (pMatch) {
+      landmarkText = pMatch[1].trim();
+    } else {
+      const tarifMatch = raw.match(/(?:Tarif|Açıklama|Adres Tarifi|Konum Tarifi):\s*([^,]+)/i);
+      if (tarifMatch) {
+        landmarkText = tarifMatch[1].trim();
+      }
+    }
+  }
+
+  // 2. Clean raw address string without parentheses
+  const cleanAddress = raw.replace(/\([^)]+\)/g, "").replace(/(?:Tarif|Açıklama):\s*[^,]+/gi, "").trim();
+
+  // Split into parts by comma or slash
+  const parts = cleanAddress
+    .split(/[,/]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
 
   let mahalle = "";
   let caddeSokak = "";
-  let remaining = "";
+  const remainingParts: string[] = [];
 
-  rawParts.forEach((part) => {
+  parts.forEach((part) => {
+    const isCity = city && part.toLocaleLowerCase("tr-TR").includes(city.toLocaleLowerCase("tr-TR"));
+    const isDist = district && district !== "Tümü" && part.toLocaleLowerCase("tr-TR").includes(district.toLocaleLowerCase("tr-TR"));
+
     if (/mah/i.test(part) && !mahalle) {
       mahalle = part;
-    } else if (/cad|sok|bulv|meydan|yol|site|apt|no/i.test(part) && !caddeSokak) {
+    } else if (/cad|sok|bulv|meydan|yol|site|apt|no|blok/i.test(part) && !caddeSokak) {
       caddeSokak = part;
-    } else if (
-      !part.toLowerCase().includes(city?.toLowerCase() || "___") &&
-      !part.toLowerCase().includes(district?.toLowerCase() || "___")
-    ) {
-      remaining = remaining ? `${remaining}, ${part}` : part;
+    } else if (!isCity && !isDist) {
+      remainingParts.push(part);
     }
   });
 
+  const remainingStr = remainingParts.join(", ");
+
   return (
     <div className="space-y-1.5 text-left">
-      {mahalle ? (
-        <div className="flex items-start gap-1.5">
-          <MapPin size={15} className="text-red-600 shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-extrabold text-gray-900 leading-snug">{mahalle}</p>
-            {caddeSokak && (
-              <p className="text-xs font-semibold text-gray-700 mt-0.5">
-                {caddeSokak} {remaining ? `· ${remaining}` : ""}
+      <div className="flex items-start gap-1.5">
+        <MapPin size={15} className="text-red-600 shrink-0 mt-0.5" />
+        <div className="min-w-0 flex-1">
+          {mahalle ? (
+            <>
+              <p className="text-sm font-extrabold text-gray-900 leading-snug">{mahalle}</p>
+              <p className="text-xs font-semibold text-gray-700 mt-0.5 leading-snug">
+                {caddeSokak || remainingStr || cleanAddress}
+                {caddeSokak && remainingStr ? ` · ${remainingStr}` : ""}
               </p>
-            )}
-          </div>
+            </>
+          ) : (
+            <p className="text-xs sm:text-sm font-semibold text-gray-800 leading-snug">
+              {cleanAddress || `${district || ""} ${city || ""}`}
+            </p>
+          )}
         </div>
-      ) : (
-        <div className="flex items-start gap-1.5">
-          <MapPin size={15} className="text-red-600 shrink-0 mt-0.5" />
-          <p className="text-xs font-semibold text-gray-800 leading-snug">
-            {raw || `${district || ""} ${city || ""}`}
-          </p>
-        </div>
-      )}
+      </div>
 
-      {landmark && (
+      {landmarkText && (
         <div className="pl-5 pt-0.5">
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 bg-amber-50/90 border border-amber-200/90 px-2 py-0.5 rounded-md">
-            Tarif: {landmark}
+          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-950 bg-amber-50/90 border border-amber-200/90 px-2 py-0.5 rounded-md leading-normal">
+            <span className="text-amber-700 font-extrabold">Tarif:</span> {landmarkText}
           </span>
         </div>
       )}
@@ -328,7 +359,8 @@ function PharmacyCard({
     pharmacy.dataQuality?.status === "rejected" ||
     pharmacy.address.trim() === "";
 
-  const cleanPhone = pharmacy.phone.replace(/[^0-9+]/g, "");
+  const cleanPhone = pharmacy.phone ? pharmacy.phone.replace(/[^0-9+]/g, "") : "";
+  const displayPhone = formatCleanPhone(pharmacy.phone);
 
   const mapsUrl =
     pharmacy.location?.latitude && pharmacy.location?.longitude
@@ -356,7 +388,7 @@ function PharmacyCard({
 
   return (
     <article
-      className={`h-full flex flex-col justify-between p-5 rounded-2xl border transition-all cursor-pointer bg-white ${
+      className={`h-full flex flex-col justify-between p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer bg-white ${
         selected
           ? "border-red-600 ring-2 ring-red-500 shadow-md transform -translate-y-0.5"
           : "border-gray-200 hover:border-red-300 hover:shadow-md"
@@ -365,13 +397,9 @@ function PharmacyCard({
     >
       {/* Top Header Section with Name, Area, and Automatic Distance */}
       <div>
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start justify-between gap-2.5">
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-black uppercase tracking-wider text-green-700 flex items-center gap-1.5 mb-1">
-              <span className="live-dot shrink-0" />
-              {pharmacy.duty?.isVerified ? "DOĞRULANMIŞ NÖBETÇİ" : "ŞU ANDA NÖBETÇİ"}
-            </p>
-            <h3 className="text-lg sm:text-xl font-extrabold text-gray-900 truncate leading-tight">
+            <h3 className="text-lg sm:text-xl font-extrabold text-gray-900 leading-snug break-words">
               {pharmacy.name}
             </h3>
             <p className="text-xs font-semibold text-gray-500 mt-0.5">
@@ -408,6 +436,8 @@ function PharmacyCard({
           ) : (
             <FormattedAddress
               address={pharmacy.address || ""}
+              landmark={pharmacy.landmark}
+              addressDescription={pharmacy.addressDescription}
               district={pharmacy.district?.name}
               city={pharmacy.city?.name}
             />
@@ -418,20 +448,22 @@ function PharmacyCard({
       {/* Action Buttons Pinned at the Bottom for Uniform Alignment */}
       <div className="mt-auto pt-2 grid grid-cols-2 gap-2">
         <a
-          className="button button-secondary flex items-center justify-center gap-1.5 font-bold text-xs sm:text-sm py-2 px-3 rounded-xl"
+          className="button button-secondary flex items-center justify-center gap-1 font-bold text-xs sm:text-[13px] py-2 px-1.5 rounded-xl whitespace-nowrap overflow-hidden"
           href={`tel:${cleanPhone}`}
           onClick={(event) => event.stopPropagation()}
+          title={pharmacy.phone || "Telefon Et"}
         >
-          <Phone size={15} /> {pharmacy.phone || "Telefon Et"}
+          <Phone size={13} className="shrink-0" />
+          <span className="truncate">{displayPhone}</span>
         </a>
         <a
-          className="button button-quiet flex items-center justify-center gap-1.5 font-semibold text-xs sm:text-sm py-2 px-3 rounded-xl text-red-700 bg-red-50/80 hover:bg-red-100/80"
+          className="button button-quiet flex items-center justify-center gap-1 font-bold text-xs sm:text-[13px] py-2 px-2 rounded-xl text-red-700 bg-red-50/80 hover:bg-red-100/80 whitespace-nowrap"
           href={mapsUrl}
           target="_blank"
           rel="noreferrer"
           onClick={(event) => event.stopPropagation()}
         >
-          <Navigation size={15} /> Yol Tarifi
+          <Navigation size={13} className="shrink-0" /> Yol Tarifi
         </a>
       </div>
     </article>
@@ -625,8 +657,8 @@ export default function Home() {
               <span>veya 81 il ve ilçe seçin</span>
             </div>
 
-            {/* Otomatik Canlı Harita - Gerçek Koordinatlarla */}
-            <div className="w-full my-4 rounded-2xl overflow-hidden border border-gray-200 shadow-md bg-white">
+            {/* Otomatik Canlı Harita - Mobilde Genişletilmiş ve Kenarlara Yayılmış */}
+            <div className="-mx-2 sm:mx-0 w-[calc(100%+1rem)] sm:w-full my-3 sm:my-4 rounded-xl sm:rounded-2xl overflow-hidden border border-gray-200 shadow-md bg-white">
               <RealLeafletMap
                 pharmacies={activePharmacies}
                 selectedPharmacy={selectedPharmacy}
@@ -693,18 +725,6 @@ export default function Home() {
               <ShieldCheck size={17} /> {locationNote}
             </p>
           </div>
-
-          <div className="hero-trust">
-            <span>
-              <Check size={17} /> 81 İl ve Tüm İlçeler
-            </span>
-            <span>
-              <Check size={17} /> Canlı EczaneAPI Altyapısı
-            </span>
-            <span>
-              <Check size={17} /> Akıllı Kota Koruması
-            </span>
-          </div>
         </div>
         <AdRail side="right" />
       </section>
@@ -717,28 +737,12 @@ export default function Home() {
           {/* Results Header with Day Tabs on Top Right */}
           <div className="results-heading flex flex-col md:flex-row md:items-end justify-between gap-4 pb-2">
             <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="eyebrow uppercase font-bold tracking-wider text-red-600">
-                  {city} {district !== "Tümü" ? `· ${district}` : "· TÜM İLÇELER"}
-                </p>
-                {sourceNote && (
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
-                    {sourceNote}
-                  </span>
-                )}
-              </div>
+              <p className="eyebrow uppercase font-bold tracking-wider text-red-600">
+                {city} {district !== "Tümü" ? `· ${district}` : "· TÜM İLÇELER"}
+              </p>
               <h2 className="text-2xl sm:text-3xl font-black text-gray-900 mt-1">
                 Nöbetçi Eczaneler
               </h2>
-              {activeDayGroup && (
-                <p className="text-xs font-semibold text-gray-500 mt-0.5">
-                  {activeDayGroup.day === "Dün"
-                    ? "Dünkü nöbet listesi arşivi"
-                    : activeDayGroup.day === "Bugün"
-                    ? "Aktif nöbet dönemi (Sabah 09:00'a kadar geçerli)"
-                    : "Gelecek gün nöbet çizelgesi"}
-                </p>
-              )}
             </div>
 
             {/* Dün / Bugün / Yarın Buttons placed directly at top-right of the list */}

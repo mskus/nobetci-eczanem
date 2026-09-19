@@ -10,7 +10,8 @@ type SiteLayoutProps = {
 
 const navItems = [
   { label: "Nöbetçi Eczaneler", href: "/" },
-  { label: "Nasıl Çalışır?", href: "/#nasil-calisir" },
+  { label: "Tüm Eczaneler", href: "/tum-eczaneler" },
+  { label: "Blog & Rehber", href: "/blog" },
   { label: "Veri Kaynakları", href: "/veri-kaynaklari" },
   { label: "Reklam Ver", href: "/reklam-ver" },
 ];
@@ -84,6 +85,8 @@ export default function SiteLayout({ children }: SiteLayoutProps) {
           </div>
           <div className="footer-links">
             <Link href="/">Nöbetçi Eczaneler</Link>
+            <Link href="/tum-eczaneler">Tüm Eczaneler</Link>
+            <Link href="/blog">Blog & Rehber</Link>
             <Link href="/veri-kaynaklari">Veri Kaynakları</Link>
             <Link href="/reklam-ver">Reklam Ver</Link>
           </div>
