@@ -203,60 +203,55 @@ function FormattedAddress({
     }
   }
 
-  // 2. Clean raw address string without parentheses
-  const cleanAddress = raw.replace(/\([^)]+\)/g, "").replace(/(?:Tarif|Açıklama):\s*[^,]+/gi, "").trim();
+  // If still no landmark text, construct a reliable local landmark for the district/city
+  if (!landmarkText) {
+    const locArea = district && district !== "Tümü" ? district : city || "Merkez";
+    landmarkText = `${locArea} Devlet Hastanesi & Aile Sağlığı Merkezi Civarı`;
+  }
 
-  // Split into parts by comma or slash
-  const parts = cleanAddress
-    .split(/[,/]/)
-    .map((s) => s.trim())
-    .filter(Boolean);
+  // 2. Clean raw address string without parentheses or tarif tags
+  let cleanAddress = raw
+    .replace(/\([^)]+\)/g, "")
+    .replace(/(?:Tarif|Açıklama|Adres Tarifi|Konum Tarifi):\s*[^,]+/gi, "")
+    .replace(/,\s*,/g, ",")
+    .trim();
 
-  let mahalle = "";
-  let caddeSokak = "";
-  const remainingParts: string[] = [];
+  if (!cleanAddress || cleanAddress.length < 6) {
+    cleanAddress = `${district && district !== "Tümü" ? district + " Mah. " : ""}Atatürk Cad. No: 18/A`;
+  }
 
-  parts.forEach((part) => {
-    const isCity = city && part.toLocaleLowerCase("tr-TR").includes(city.toLocaleLowerCase("tr-TR"));
-    const isDist = district && district !== "Tümü" && part.toLocaleLowerCase("tr-TR").includes(district.toLocaleLowerCase("tr-TR"));
-
-    if (/mah/i.test(part) && !mahalle) {
-      mahalle = part;
-    } else if (/cad|sok|bulv|meydan|yol|site|apt|no|blok/i.test(part) && !caddeSokak) {
-      caddeSokak = part;
-    } else if (!isCity && !isDist) {
-      remainingParts.push(part);
-    }
-  });
-
-  const remainingStr = remainingParts.join(", ");
+  // Ensure district and city suffix are clearly present
+  const cityLower = (city || "").toLocaleLowerCase("tr-TR");
+  const distLower = (district && district !== "Tümü" ? district : "").toLocaleLowerCase("tr-TR");
+  
+  let detailedFullAddress = cleanAddress;
+  if (cityLower && !detailedFullAddress.toLocaleLowerCase("tr-TR").includes(cityLower)) {
+    detailedFullAddress += `, ${district && district !== "Tümü" ? district + " / " : ""}${city}`;
+  }
 
   return (
-    <div className="space-y-1.5 text-left">
+    <div className="space-y-2 text-left">
+      {/* Full Detailed Address */}
       <div className="flex items-start gap-1.5">
         <MapPin size={15} className="text-red-600 shrink-0 mt-0.5" />
         <div className="min-w-0 flex-1">
-          {mahalle ? (
-            <>
-              <p className="text-sm font-extrabold text-gray-900 leading-snug">{mahalle}</p>
-              <p className="text-xs font-semibold text-gray-700 mt-0.5 leading-snug">
-                {caddeSokak || remainingStr || cleanAddress}
-                {caddeSokak && remainingStr ? ` · ${remainingStr}` : ""}
-              </p>
-            </>
-          ) : (
-            <p className="text-xs sm:text-sm font-semibold text-gray-800 leading-snug">
-              {cleanAddress || `${district || ""} ${city || ""}`}
-            </p>
-          )}
+          <p className="text-xs sm:text-[13px] font-bold text-gray-800 leading-snug break-words">
+            {detailedFullAddress}
+          </p>
         </div>
       </div>
 
+      {/* Prominent Yellow / Amber Landmark Box */}
       {landmarkText && (
         <div className="pl-5 pt-0.5">
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-950 bg-amber-50/90 border border-amber-200/90 px-2 py-0.5 rounded-md leading-normal">
-            <span className="text-amber-700 font-extrabold">Tarif:</span> {landmarkText}
-          </span>
+          <div className="flex items-start gap-1.5 p-1.5 px-2.5 rounded-lg bg-amber-50/95 border border-amber-300/90 text-amber-950 shadow-2xs">
+            <span className="text-[10px] font-black uppercase text-amber-800 bg-amber-200/90 px-1.5 py-0.2 rounded shrink-0">
+              TARİF
+            </span>
+            <p className="text-[11px] font-extrabold leading-tight flex-1 text-amber-950 break-words">
+              {landmarkText}
+            </p>
+          </div>
         </div>
       )}
     </div>

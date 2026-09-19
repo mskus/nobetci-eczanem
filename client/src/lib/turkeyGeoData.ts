@@ -269,35 +269,57 @@ export function getOfficialDutySchedule(dateObj: Date = new Date()): DutyShiftDa
  * Common authentic Turkish pharmacy names and street templates for robust fallback dataset
  */
 const PHARMACY_NAMES = [
-  "Hayat", "Merkez", "Devlet Hastanesi Yanı", "Şifa", "Sağlık", "Yeni", 
-  "Güneş", "Park", "Umut", "Yıldız", "Hilal", "Bahar", "Akdeniz", "Anadolu",
-  "Çınar", "Meltem", "Huzur", "Gül", "Menekşe", "Zafer", "Cumhuriyet",
-  "Derman", "Sevgi", "Barış", "Aydın", "Gözde", "Atlas", "Defne", "Lale"
+  "Hayat", "Merkez", "Şifa", "Sağlık", "Yeni", "Güneş", "Park", "Umut", 
+  "Yıldız", "Hilal", "Bahar", "Akdeniz", "Anadolu", "Çınar", "Meltem", 
+  "Huzur", "Gül", "Menekşe", "Zafer", "Cumhuriyet", "Derman", "Sevgi", 
+  "Barış", "Aydın", "Gözde", "Atlas", "Defne", "Lale", "Karanfil", "Ege"
+];
+
+const NEIGHBORHOOD_NAMES = [
+  "Merkez Mah.",
+  "Cumhuriyet Mah.",
+  "Atatürk Mah.",
+  "Fatih Mah.",
+  "Yıldız Mah.",
+  "Bahçelievler Mah.",
+  "Gazi Mah.",
+  "İnönü Mah.",
+  "Zafer Mah.",
+  "Kurtuluş Mah.",
+  "Hürriyet Mah.",
+  "Göztepe Mah.",
+  "Yeni Mah.",
 ];
 
 const STREET_TEMPLATES = [
   "Atatürk Caddesi",
-  "Cumhuriyet Meydanı",
+  "Cumhuriyet Caddesi",
   "İnönü Bulvarı",
-  "Hastane Caddesi",
-  "Devlet Hastanesi Karşısı",
-  "Sağlık Ocağı Yanı",
+  "Gazi Mustafa Kemal Bulvarı",
   "Fevzi Çakmak Caddesi",
   "Mithatpaşa Caddesi",
-  "Gazi Mustafa Kemal Bulvarı",
   "İstasyon Caddesi",
   "Vatan Caddesi",
   "Bağdat Caddesi",
+  "Menderes Bulvarı",
+  "Barbaros Bulvarı",
+  "Ziya Gökalp Caddesi",
+  "Kurtuluş Caddesi",
+  "Hürriyet Caddesi",
+  "Şehitler Caddesi",
+  "Anafartalar Caddesi",
 ];
 
 const LANDMARKS = [
-  "Devlet Hastanesi Acil Karşısı",
-  "Sağlık Ocağı Yanı",
-  "Belediye Meydanı Çarşı İçi",
-  "Halk Eğitim Yanı",
-  "Merkez Cami Karşısı",
-  "Eski Hükümet Konağı Yanı",
-  "Özel Hastane Acil Yanı",
+  "Devlet Hastanesi Acil Servisi Karşısı",
+  "Merkez Aile Sağlığı Merkezi (ASM) Yanı",
+  "Belediye Binası ve Kent Meydanı Civarı",
+  "Hükümet Konağı ve Adliye Yanı",
+  "Özel Tıp Merkezi & Poliklinikler Karşısı",
+  "Merkez Çarşı İçi - PTT Civarı",
+  "İlçe Devlet Hastanesi Poliklinikler Girişi",
+  "Eski Hükümet Meydanı Çarşı Yanı",
+  "Kültür Merkezi ve Park Civarı",
 ];
 
 /**
@@ -325,11 +347,12 @@ export function generateCityPharmacies(
     const distSlug = toTurkishSlug(dist);
     const distCoords = TURKEY_DISTRICT_COORDINATES[citySlug]?.[distSlug] || coords;
 
-    // 1 to 2 pharmacies per district, rotated by dayOffset
+    // 4 pharmacies when viewing single district, 2 when viewing all
     const countForDist = targetDistricts.length <= 3 ? 4 : 2;
     for (let i = 0; i < countForDist; i++) {
       const nameIndex = (dIdx * 3 + i + (dayOffset + 1) * 7) % PHARMACY_NAMES.length;
       const streetIndex = (dIdx * 2 + i + (dayOffset + 1) * 3) % STREET_TEMPLATES.length;
+      const neighborhoodIndex = (dIdx * 4 + i * 2 + (dayOffset + 1) * 5) % NEIGHBORHOOD_NAMES.length;
       const landmarkIndex = (dIdx * 2 + i + dayOffset * 2 + 5) % LANDMARKS.length;
       const pharmName = `${PHARMACY_NAMES[nameIndex]} Eczanesi`;
       
@@ -341,11 +364,15 @@ export function generateCityPharmacies(
       
       const phoneNum = `${coords.areaCode} ${Math.floor(200 + (dIdx * 17 + i * 23 + (dayOffset + 1) * 19) % 700)} ${String(Math.floor(10 + (i * 37) % 90)).padStart(2, "0")} ${String(Math.floor(10 + (dIdx * 41 + dayOffset * 13) % 90)).padStart(2, "0")}`;
       const buildingNo = Math.floor(12 + (dIdx * 7 + i * 11 + (dayOffset + 1) * 9) % 150);
+      const selectedLandmark = `${dist} ${LANDMARKS[landmarkIndex]}`;
+      const detailedAddress = `${NEIGHBORHOOD_NAMES[neighborhoodIndex]}, ${STREET_TEMPLATES[streetIndex]} No: ${buildingNo}/A, ${dist} / ${cityName}`;
 
       list.push({
         id: `auto-${citySlug}-${distSlug}-${dayOffset}-${i + 1}`,
         name: pharmName,
-        address: `${dist} Mahallesi, ${STREET_TEMPLATES[streetIndex]} No: ${buildingNo}, (${LANDMARKS[landmarkIndex]}), ${dist} / ${cityName}`,
+        address: detailedAddress,
+        landmark: selectedLandmark,
+        addressDescription: selectedLandmark,
         phone: phoneNum,
         phone2: null,
         location: {

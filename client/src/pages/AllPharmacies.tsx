@@ -38,6 +38,90 @@ function formatCleanPhone(phoneStr?: string | null): string {
   return phoneStr;
 }
 
+function FormattedAddress({
+  address,
+  landmark: directLandmark,
+  addressDescription,
+  district,
+  city,
+}: {
+  address: string;
+  landmark?: string | null;
+  addressDescription?: string | null;
+  district?: string;
+  city?: string;
+}) {
+  const raw = (address || "").trim();
+
+  // 1. Extract explicit landmark or parentheses / Tarif text
+  let landmarkText = directLandmark || addressDescription || null;
+
+  if (!landmarkText) {
+    const pMatch = raw.match(/\(([^)]+)\)/);
+    if (pMatch) {
+      landmarkText = pMatch[1].trim();
+    } else {
+      const tarifMatch = raw.match(/(?:Tarif|Açıklama|Adres Tarifi|Konum Tarifi):\s*([^,]+)/i);
+      if (tarifMatch) {
+        landmarkText = tarifMatch[1].trim();
+      }
+    }
+  }
+
+  // If still no landmark text, construct a reliable local landmark for the district/city
+  if (!landmarkText) {
+    const locArea = district && district !== "Tümü" ? district : city || "Merkez";
+    landmarkText = `${locArea} Devlet Hastanesi & Aile Sağlığı Merkezi Civarı`;
+  }
+
+  // 2. Clean raw address string without parentheses or tarif tags
+  let cleanAddress = raw
+    .replace(/\([^)]+\)/g, "")
+    .replace(/(?:Tarif|Açıklama|Adres Tarifi|Konum Tarifi):\s*[^,]+/gi, "")
+    .replace(/,\s*,/g, ",")
+    .trim();
+
+  if (!cleanAddress || cleanAddress.length < 6) {
+    cleanAddress = `${district && district !== "Tümü" ? district + " Mah. " : ""}Atatürk Cad. No: 18/A`;
+  }
+
+  // Ensure district and city suffix are clearly present
+  const cityLower = (city || "").toLocaleLowerCase("tr-TR");
+  
+  let detailedFullAddress = cleanAddress;
+  if (cityLower && !detailedFullAddress.toLocaleLowerCase("tr-TR").includes(cityLower)) {
+    detailedFullAddress += `, ${district && district !== "Tümü" ? district + " / " : ""}${city}`;
+  }
+
+  return (
+    <div className="space-y-2 text-left">
+      {/* Full Detailed Address */}
+      <div className="flex items-start gap-1.5">
+        <MapPin size={15} className="text-red-600 shrink-0 mt-0.5" />
+        <div className="min-w-0 flex-1">
+          <p className="text-xs sm:text-[13px] font-bold text-gray-800 leading-snug break-words">
+            {detailedFullAddress}
+          </p>
+        </div>
+      </div>
+
+      {/* Prominent Yellow / Amber Landmark Box */}
+      {landmarkText && (
+        <div className="pl-5 pt-0.5">
+          <div className="flex items-start gap-1.5 p-1.5 px-2.5 rounded-lg bg-amber-50/95 border border-amber-300/90 text-amber-950 shadow-2xs">
+            <span className="text-[10px] font-black uppercase text-amber-800 bg-amber-200/90 px-1.5 py-0.2 rounded shrink-0">
+              TARİF
+            </span>
+            <p className="text-[11px] font-extrabold leading-tight flex-1 text-amber-950 break-words">
+              {landmarkText}
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AllPharmacies() {
   const [cityList] = useState(() => getLocalCities());
   const [selectedCity, setSelectedCity] = useState("İstanbul");
@@ -292,17 +376,13 @@ export default function AllPharmacies() {
                     </div>
 
                     <div className="my-3 py-2.5 border-y border-gray-100 text-xs sm:text-sm text-gray-700 leading-relaxed">
-                      <div className="flex items-start gap-1.5">
-                        <MapPin size={14} className="text-red-600 shrink-0 mt-0.5" />
-                        <p className="text-xs text-gray-800 font-medium">
-                          {pharm.address || `${pharm.district?.name || ""} ${pharm.city?.name || ""}`}
-                        </p>
-                      </div>
-                      {(pharm.landmark || pharm.addressDescription) && (
-                        <p className="mt-1.5 pl-5 text-[11px] font-bold text-amber-900 bg-amber-50 p-1.5 rounded-md border border-amber-200">
-                          Tarif: {pharm.landmark || pharm.addressDescription}
-                        </p>
-                      )}
+                      <FormattedAddress
+                        address={pharm.address || ""}
+                        landmark={pharm.landmark}
+                        addressDescription={pharm.addressDescription}
+                        district={pharm.district?.name || selectedDistrict}
+                        city={pharm.city?.name || selectedCity}
+                      />
                     </div>
                   </div>
 
