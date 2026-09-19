@@ -112,6 +112,8 @@ async function startServer() {
           id: String(item.id || item.slug || i),
           name: item.name || item.eczane_adi || "Eczane",
           address: item.address || item.adres || "Adres bilgisi mevcut",
+          landmark: item.landmark || item.tarif || item.addressDescription || item.address_description || item.description || null,
+          addressDescription: item.addressDescription || item.address_description || item.tarif || item.description || null,
           phone: item.phone || item.telefon || "",
           phone2: item.phone2 || null,
           location: {
@@ -204,6 +206,8 @@ async function startServer() {
           id: String(item.id || item.slug || i),
           name: item.name || item.eczane_adi || "Eczane",
           address: item.address || item.adres || "Adres bilgisi mevcut",
+          landmark: item.landmark || item.tarif || item.addressDescription || item.address_description || item.description || null,
+          addressDescription: item.addressDescription || item.address_description || item.tarif || item.description || null,
           phone: item.phone || item.telefon || "",
           phone2: item.phone2 || null,
           location: {

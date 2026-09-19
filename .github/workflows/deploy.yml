@@ -38,6 +38,9 @@ jobs:
           npm test
 
       - name: Build static web client
+        env:
+          VITE_APP_VERSION: v1.0.${{ github.run_number }}
+          VITE_GIT_SHA: ${{ github.sha }}
         run: npm run build:pages
 
       - name: Setup Pages

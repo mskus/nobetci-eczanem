@@ -24,6 +24,10 @@ import { QuotaBadge } from "./QuotaBadge";
 import { useQuota } from "@/hooks/useQuota";
 import { startLocationUpdates } from "@/lib/globalLocation";
 
+const appVersion = import.meta.env.VITE_APP_VERSION || "geliştirme";
+const gitSha = import.meta.env.VITE_GIT_SHA || "";
+const commitUrl = gitSha ? `https://github.com/mskus/nobetci-eczanem/commit/${gitSha}` : "https://github.com/mskus/nobetci-eczanem";
+
 type SiteLayoutProps = {
   children: React.ReactNode;
 };
@@ -327,6 +331,9 @@ export default function SiteLayout({ children }: SiteLayoutProps) {
           <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500">
             <span>© 2026 Nöbetçi Eczanem · Sağlık Bakanlığı ve TEB Esaslarına Uygun Bilgilendirme</span>
             <div className="flex items-center gap-4 text-[11px]">
+              <a href={commitUrl} target="_blank" rel="noreferrer" className="hover:text-gray-300 underline" title={gitSha || "GitHub deposu"}>
+                Sürüm {appVersion}{gitSha ? ` · ${gitSha.slice(0, 7)}` : ""}
+              </a>
               <Link href="/veri-kaynaklari" className="hover:text-gray-300 underline">Veri Kaynakları & Tüketim</Link>
               <Link href="/iletisim" className="hover:text-gray-300 underline">İletişim & Geri Bildirim</Link>
             </div>
