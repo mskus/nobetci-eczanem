@@ -70,17 +70,64 @@ export default function DataSources() {
               <Database size={26} />
             </div>
             <div>
-              <h2>Resmi Eczacı Odaları ve Sağlık Bakanlığı Verileri</h2>
+              <h2>Çoklu Veri Kaynağı & Kesintisiz Nöbet Ağı</h2>
               <p>
-                Nöbetçi eczane listeleri her gece 00:00'da güncellenir ve Türkiye saati ile sabah 09:00'da nöbet
-                devir-teslimi gerçekleşir. Sistemimiz tek bir il sorgusunda tüm ilçeleri ve 3 günlük listeyi topluca
-                alarak kotayı maksimum verimlilikle korur.
+                Nöbetçi Eczanem, birincil olarak <strong>EczaneAPI</strong> (aylık 200 sorgu kotalı, akıllı önbellekli),
+                ikincil olarak <strong>EczaneAdresi.com Public API v1</strong> (/duty-pharmacies, /nearest-pharmacies, /iller, /eczane/:slug)
+                ve yedek olarak <strong>RapidAPI</strong> entegrasyonuyla 81 ilde kesintisiz çalışır.
               </p>
             </div>
             <div className="source-summary-time">
               <span className="status-dot" />
               <strong>Nöbet Değişim Saati</strong>
               <span>Her gün 09:00</span>
+            </div>
+          </div>
+
+          {/* API Endpoints & Sources Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="p-5 bg-white rounded-2xl border border-gray-200 shadow-sm">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                <h3 className="font-extrabold text-gray-900 text-base">EczaneAPI.com</h3>
+              </div>
+              <p className="text-xs text-gray-600 mb-3">
+                Resmi İl Sağlık & Eczacı Odaları verileri. Aylık 200 sorgu hakkı, 81 il ve tüm ilçeler. Tek sorguda dün, bugün ve yarın.
+              </p>
+              <div className="text-[11px] font-mono bg-gray-50 p-2 rounded border border-gray-100 text-gray-700">
+                GET /pharmacies/on-duty<br />
+                GET /pharmacies/nearby
+              </div>
+            </div>
+
+            <div className="p-5 bg-white rounded-2xl border border-gray-200 shadow-sm">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+                <h3 className="font-extrabold text-gray-900 text-base">EczaneAdresi.com Public v1</h3>
+              </div>
+              <p className="text-xs text-gray-600 mb-3">
+                Doğrudan kamuya açık nöbetçi eczane servisi. GPS yakınlık hesaplama ve ilçe bazlı sorgular.
+              </p>
+              <div className="text-[11px] font-mono bg-gray-50 p-2 rounded border border-gray-100 text-gray-700">
+                GET /duty-pharmacies?city=&limit=<br />
+                GET /nearest-pharmacies?lat=&lng=<br />
+                GET /iller & /eczane/:slug
+              </div>
+            </div>
+
+            <div className="p-5 bg-white rounded-2xl border border-gray-200 shadow-sm">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                <h3 className="font-extrabold text-gray-900 text-base">RapidAPI Nöbetçi Eczane</h3>
+              </div>
+              <p className="text-xs text-gray-600 mb-3">
+                Alternatif yedek kaynak altyapısı. Şehir ve koordinat bazlı nöbetçi listeleri.
+              </p>
+              <div className="text-[11px] font-mono bg-gray-50 p-2 rounded border border-gray-100 text-gray-700">
+                GET /pharmacies-on-duty<br />
+                GET /pharmacies-on-duty/cities<br />
+                GET /pharmacies-on-duty/locations
+              </div>
             </div>
           </div>
 

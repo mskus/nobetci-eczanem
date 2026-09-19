@@ -41,9 +41,9 @@ function saveCacheToDisk() {
   ensureDataDir();
   try {
     const obj: Record<string, CacheEntry> = {};
-    for (const [key, entry] of memoryCache.entries()) {
+    memoryCache.forEach((entry, key) => {
       obj[key] = entry;
-    }
+    });
     fs.writeFileSync(CACHE_FILE, JSON.stringify(obj, null, 2), "utf-8");
   } catch (err) {
     console.error("Failed to write cache file:", err);

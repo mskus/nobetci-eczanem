@@ -288,11 +288,15 @@ export default function Home() {
   const [district, setDistrict] = useState("Tümü");
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
 
+  // Data source selection: "eczaneapi" (primary, quota-managed), "eczaneadresi" (public v1), "rapidapi" (alternative)
+  const [dataSource, setDataSource] = useState<"eczaneapi" | "eczaneadresi" | "rapidapi">("eczaneapi");
+
   const [loading, setLoading] = useState(false);
   const [daysData, setDaysData] = useState<DayDutyGroup[]>([]);
   const [selectedPharmacy, setSelectedPharmacy] = useState(0);
   const [locationNote, setLocationNote] = useState("Konumunuz paylaşılmadan arama yapılmaz.");
   const [lastWasCache, setLastWasCache] = useState<boolean | undefined>(undefined);
+  const [sourceNote, setSourceNote] = useState<string>("");
 
   const { updateQuota } = useQuota();
 
@@ -332,9 +336,14 @@ export default function Home() {
     setDistrict("Tümü");
   }, [city]);
 
-  // 3. Fetch pharmacies function
-  const fetchPharmacies = async (targetCity: string, targetDistrict?: string) => {
+  // 3. Fetch pharmacies function supporting multiple data sources
+  const fetchPharmacies = async (
+    targetCity: string,
+    targetDistrict?: string,
+    overrideSource?: "eczaneapi" | "eczaneadresi" | "rapidapi"
+  ) => {
     setLoading(true);
+    const activeSource = overrideSource || dataSource;
     const citySlug = toTurkishSlug(targetCity);
     const districtParam =
       targetDistrict && targetDistrict !== "Tümü"
@@ -342,34 +351,128 @@ export default function Home() {
         : "";
 
     try {
-      const res = await fetch(`/api/pharmacies/on-duty?city=${citySlug}${districtParam}`);
-      const json = await res.json();
+      if (activeSource === "eczaneapi") {
+        const res = await fetch(`/api/pharmacies/on-duty?city=${citySlug}${districtParam}`);
+        const json = await res.json();
 
-      if (json.success && json.data) {
-        setDaysData(json.data.days || []);
-        setLastWasCache(json.wasCacheHit);
+        if (json.success && json.data) {
+          setDaysData(json.data.days || []);
+          setLastWasCache(json.wasCacheHit);
+          setSourceNote("EczaneAPI (Resmi İl Sağlık / Eczacı Odaları)");
 
-        if (json.quota) {
-          updateQuota(json.quota);
-        }
+          if (json.quota) {
+            updateQuota(json.quota);
+          }
 
-        // Set default day to "Bugün"
-        const todayIdx = (json.data.days || []).findIndex(
-          (d: DayDutyGroup) => d.day === "Bugün"
-        );
-        setSelectedDayIndex(todayIdx !== -1 ? todayIdx : 0);
-        setSelectedPharmacy(0);
+          const todayIdx = (json.data.days || []).findIndex(
+            (d: DayDutyGroup) => d.day === "Bugün"
+          );
+          setSelectedDayIndex(todayIdx !== -1 ? todayIdx : 0);
+          setSelectedPharmacy(0);
 
-        if (json.wasCacheHit) {
-          toast.success("Akıllı önbellekten 0 kotayla yüklendi ⚡");
+          if (json.wasCacheHit) {
+            toast.success("Akıllı önbellekten 0 kotayla yüklendi ⚡");
+          } else {
+            toast.success("EczaneAPI: Güncel nöbetçi eczaneler listelendi");
+          }
         } else {
-          toast.success("Güncel nöbetçi eczaneler listelendi");
+          toast.error(json.error || "Eczane listesi alınamadı");
         }
-      } else {
-        toast.error(json.error || "Eczane listesi alınamadı");
+      } else if (activeSource === "eczaneadresi") {
+        // eczaneadresi.com public v1
+        const res = await fetch(
+          `/api/eczaneadresi/duty-pharmacies?city=${citySlug}${targetDistrict && targetDistrict !== "Tümü" ? `&district=${encodeURIComponent(toTurkishSlug(targetDistrict))}` : ""}&limit=50`
+        );
+        const json = await res.json();
+
+        if (json.success) {
+          const list: any[] = json.data || (Array.isArray(json) ? json : []);
+          const mapped: RawPharmacy[] = list.map((item: any, i: number) => ({
+            id: String(item.id || item.slug || i),
+            name: item.name || item.eczane_adi || "Eczane",
+            address: item.address || item.adres || "Adres bilgisi mevcut",
+            phone: item.phone || item.telefon || "",
+            phone2: item.phone2 || null,
+            location: {
+              latitude: item.lat || item.latitude || (item.location ? item.location.lat : null),
+              longitude: item.lng || item.longitude || (item.location ? item.location.lng : null),
+            },
+            city: { name: targetCity, slug: citySlug },
+            district: {
+              name: item.district || targetDistrict || "",
+              slug: toTurkishSlug(item.district || targetDistrict || ""),
+            },
+            duty: {
+              date: new Date().toISOString().split("T")[0],
+              isVerified: true,
+            },
+            distance: item.distance_m ? item.distance_m / 1000 : undefined,
+          }));
+
+          setDaysData([
+            {
+              day: "Bugün (EczaneAdresi.com)",
+              date: new Date().toISOString().split("T")[0],
+              count: mapped.length,
+              pharmacies: mapped,
+            },
+          ]);
+          setLastWasCache(json.wasCacheHit);
+          setSourceNote("EczaneAdresi.com Public API v1");
+          setSelectedDayIndex(0);
+          setSelectedPharmacy(0);
+          toast.success(`EczaneAdresi.com: ${mapped.length} eczane listelendi`);
+        } else {
+          toast.error(json.error || "EczaneAdresi verisi alınamadı");
+        }
+      } else if (activeSource === "rapidapi") {
+        // RapidAPI pharmacies-on-duty
+        const res = await fetch(
+          `/api/rapidapi/pharmacies-on-duty?city=${citySlug}${targetDistrict && targetDistrict !== "Tümü" ? `&district=${encodeURIComponent(toTurkishSlug(targetDistrict))}` : ""}`
+        );
+        const json = await res.json();
+
+        if (json.success || Array.isArray(json.data) || Array.isArray(json)) {
+          const list: any[] = json.data || (Array.isArray(json) ? json : []);
+          const mapped: RawPharmacy[] = list.map((item: any, i: number) => ({
+            id: String(item.id || item.name || i),
+            name: item.name || item.pharmacyName || "Eczane",
+            address: item.address || item.addressDescription || "Adres belirtilmemiş",
+            phone: item.phone || item.phoneNumber || "",
+            location: {
+              latitude: item.latitude || item.lat || null,
+              longitude: item.longitude || item.lon || null,
+            },
+            city: { name: targetCity, slug: citySlug },
+            district: {
+              name: item.district || targetDistrict || "",
+              slug: toTurkishSlug(item.district || targetDistrict || ""),
+            },
+            duty: {
+              date: new Date().toISOString().split("T")[0],
+              isVerified: true,
+            },
+          }));
+
+          setDaysData([
+            {
+              day: "Bugün (RapidAPI)",
+              date: new Date().toISOString().split("T")[0],
+              count: mapped.length,
+              pharmacies: mapped,
+            },
+          ]);
+          setLastWasCache(json.wasCacheHit);
+          setSourceNote("RapidAPI Pharmacies On Duty");
+          setSelectedDayIndex(0);
+          setSelectedPharmacy(0);
+          toast.success(`RapidAPI: ${mapped.length} eczane listelendi`);
+        } else {
+          toast.error(json.error || "RapidAPI verisi alınamadı");
+        }
       }
-    } catch (err) {
-      toast.error("Bağlantı hatası oluştu.");
+    } catch (err: any) {
+      toast.error(err.message || "Bağlantı hatası oluştu.");
     } finally {
       setLoading(false);
     }
@@ -391,6 +494,11 @@ export default function Home() {
     fetchPharmacies(city, newDistrict);
   };
 
+  const handleSourceChange = (newSource: "eczaneapi" | "eczaneadresi" | "rapidapi") => {
+    setDataSource(newSource);
+    fetchPharmacies(city, district, newSource);
+  };
+
   // GPS Nearby
   const findNearby = () => {
     if (!navigator.geolocation) {
@@ -408,6 +516,43 @@ export default function Home() {
         setLocationNote(`Konumunuz tespit edildi (${latitude.toFixed(3)}, ${longitude.toFixed(3)}). En yakın nöbetçiler getiriliyor.`);
 
         try {
+          if (dataSource === "eczaneadresi") {
+            // EczaneAdresi nearest
+            const res = await fetch(`/api/eczaneadresi/nearest-pharmacies?lat=${latitude}&lng=${longitude}&limit=10`);
+            const json = await res.json();
+            if (json.success) {
+              const list = json.data || (Array.isArray(json) ? json : []);
+              const mapped: RawPharmacy[] = list.map((item: any, i: number) => ({
+                id: String(item.id || item.slug || i),
+                name: item.name || item.eczane_adi || "Eczane",
+                address: item.address || item.adres || "Adres",
+                phone: item.phone || item.telefon || "",
+                location: {
+                  latitude: item.lat || null,
+                  longitude: item.lng || null,
+                },
+                distance: item.distance_m ? item.distance_m / 1000 : undefined,
+                duty: { date: new Date().toISOString().split("T")[0], isVerified: true },
+              }));
+              setDaysData([
+                {
+                  day: "Yakınınızda (EczaneAdresi.com)",
+                  date: new Date().toISOString().split("T")[0],
+                  count: mapped.length,
+                  pharmacies: mapped,
+                },
+              ]);
+              setLastWasCache(json.wasCacheHit);
+              setSourceNote("EczaneAdresi.com GPS En Yakın Eczaneler");
+              setSelectedDayIndex(0);
+              setSelectedPharmacy(0);
+              toast.success(`${mapped.length} adet nöbetçi eczane bulundu!`);
+              document.getElementById("sonuclar")?.scrollIntoView({ behavior: "smooth", block: "start" });
+              return;
+            }
+          }
+
+          // Default / Primary EczaneAPI
           const res = await fetch(
             `/api/pharmacies/nearby?latitude=${latitude}&longitude=${longitude}&radius=15`
           );
@@ -416,6 +561,7 @@ export default function Home() {
           if (json.success && json.data) {
             setLastWasCache(json.wasCacheHit);
             if (json.quota) updateQuota(json.quota);
+            setSourceNote("EczaneAPI Canlı GPS Konum Servisi");
 
             const pharmaciesList: RawPharmacy[] = json.data.pharmacies || [];
             setDaysData([
@@ -484,6 +630,44 @@ export default function Home() {
 
             <div className="search-divider">
               <span>veya 81 il ve ilçe seçin</span>
+            </div>
+
+            {/* Kaynak Seçici / Data Source Selector */}
+            <div className="flex flex-wrap items-center justify-center gap-2 mb-2 p-1.5 bg-gray-100/80 rounded-xl border border-gray-200">
+              <span className="text-xs font-bold text-gray-500 mr-1">Veri Kaynağı:</span>
+              <button
+                type="button"
+                onClick={() => handleSourceChange("eczaneapi")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
+                  dataSource === "eczaneapi"
+                    ? "bg-red-600 text-white shadow-xs"
+                    : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-200"
+                }`}
+              >
+                EczaneAPI (Resmi/200 Kota)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSourceChange("eczaneadresi")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
+                  dataSource === "eczaneadresi"
+                    ? "bg-red-600 text-white shadow-xs"
+                    : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-200"
+                }`}
+              >
+                EczaneAdresi.com (Public v1)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSourceChange("rapidapi")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
+                  dataSource === "rapidapi"
+                    ? "bg-red-600 text-white shadow-xs"
+                    : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-200"
+                }`}
+              >
+                RapidAPI (Yedek)
+              </button>
             </div>
 
             <div className="select-row">
@@ -563,9 +747,16 @@ export default function Home() {
           {/* Results Header with Day Tabs & Cache Indicator */}
           <div className="results-heading flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
-              <p className="eyebrow uppercase font-bold tracking-wider text-red-600">
-                {city} {district !== "Tümü" ? `· ${district}` : "· TÜM İLÇELER"}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="eyebrow uppercase font-bold tracking-wider text-red-600">
+                  {city} {district !== "Tümü" ? `· ${district}` : "· TÜM İLÇELER"}
+                </p>
+                {sourceNote && (
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200">
+                    {sourceNote}
+                  </span>
+                )}
+              </div>
               <h2>Nöbetçi Eczaneler</h2>
             </div>
 
