@@ -181,7 +181,7 @@ select { appearance: none; min-height: 48px; width: 100%; border: 1px solid #cfc
   .mobile-nav-link:last-child { border: 0; }
   .hero-section { min-height: calc(100dvh - 62px); box-sizing: border-box; padding: 24px 12px 28px; }
   .hero-content { min-height: calc(100dvh - 62px); }
-  .pharmacy-hero-map, .pharmacy-hero-map .map-preview, .pharmacy-hero-map .map-canvas { height: max(420px, calc(100dvh - 160px)); }
+  .pharmacy-hero-map, .pharmacy-hero-map .map-preview, .pharmacy-hero-map .map-canvas { height: max(420px, calc(10dvh - 160px)); }
   .hero-content h1 { font-size: clamp(28px, 8vw, 42px); }
   .hero-lead { font-size: 16px; margin-bottom: 16px; }
   .search-panel { padding: 14px 12px; }
