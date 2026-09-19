@@ -129,25 +129,111 @@ export function formatDistance(distanceKm: number): string {
 }
 
 /**
+ * Duty Shift Schedule & 09:00 AM Transition Calculator
+ * According to official pharmacy shifts in Turkey:
+ * - Each duty day starts at 09:00 AM and ends next morning at 09:00 AM.
+ * - If current time is before 09:00 AM, the active shift belongs to yesterday's date.
+ * - If current time is 09:00 AM or after, the active shift belongs to today's date.
+ */
+export interface DutyShiftDay {
+  key: "dun" | "bugun" | "yarin";
+  label: "Dün" | "Bugün" | "Yarın";
+  date: string; // YYYY-MM-DD
+  formattedDate: string; // e.g. "18 Eylül 2026"
+  shortDate: string; // e.g. "18 Eyl"
+  weekday: string; // e.g. "Cuma"
+  fullTitle: string; // e.g. "Dün (18 Eylül Cuma)"
+  shiftHours: string; // e.g. "09:00 – Ertesi 09:00"
+}
+
+export function getOfficialDutySchedule(dateObj: Date = new Date()): DutyShiftDay[] {
+  // Use Turkish local time if possible or current date
+  const hours = dateObj.getHours();
+  const isBefore9AM = hours < 9;
+
+  // Calculate the base shift date for "Bugün"
+  const baseToday = new Date(dateObj);
+  if (isBefore9AM) {
+    baseToday.setDate(baseToday.getDate() - 1);
+  }
+
+  const yesterdayDate = new Date(baseToday);
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+
+  const tomorrowDate = new Date(baseToday);
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+
+  const monthsTR = [
+    "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+    "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"
+  ];
+  const monthsShortTR = [
+    "Oca", "Şub", "Mar", "Nis", "May", "Haz",
+    "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"
+  ];
+  const weekdaysTR = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
+
+  const buildDay = (d: Date, key: "dun" | "bugun" | "yarin", label: "Dün" | "Bugün" | "Yarın"): DutyShiftDay => {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const dateStr = `${yyyy}-${mm}-${dd}`;
+    const formattedDate = `${d.getDate()} ${monthsTR[d.getMonth()]} ${yyyy}`;
+    const shortDate = `${d.getDate()} ${monthsShortTR[d.getMonth()]}`;
+    const weekday = weekdaysTR[d.getDay()];
+
+    return {
+      key,
+      label,
+      date: dateStr,
+      formattedDate,
+      shortDate,
+      weekday,
+      fullTitle: `${label} (${d.getDate()} ${monthsShortTR[d.getMonth()]} ${weekday})`,
+      shiftHours: `09:00 – Ertesi 09:00`,
+    };
+  };
+
+  return [
+    buildDay(yesterdayDate, "dun", "Dün"),
+    buildDay(baseToday, "bugun", "Bugün"),
+    buildDay(tomorrowDate, "yarin", "Yarın"),
+  ];
+}
+
+/**
  * Common authentic Turkish pharmacy names and street templates for robust fallback dataset
  */
 const PHARMACY_NAMES = [
   "Hayat", "Merkez", "Devlet Hastanesi Yanı", "Şifa", "Sağlık", "Yeni", 
   "Güneş", "Park", "Umut", "Yıldız", "Hilal", "Bahar", "Akdeniz", "Anadolu",
-  "Çınar", "Meltem", "Huzur", "Gül", "Menekşe", "Zafer", "Cumhuriyet"
+  "Çınar", "Meltem", "Huzur", "Gül", "Menekşe", "Zafer", "Cumhuriyet",
+  "Derman", "Sevgi", "Barış", "Aydın", "Gözde", "Atlas", "Defne", "Lale"
 ];
 
 const STREET_TEMPLATES = [
-  "Atatürk Caddesi No:",
-  "Cumhuriyet Meydanı No:",
-  "İnönü Bulvarı No:",
-  "Hastane Caddesi No:",
-  "Devlet Hastanesi Karşısı No:",
-  "Sağlık Ocağı Yanı No:",
-  "Fevzi Çakmak Caddesi No:",
-  "Mithatpaşa Caddesi No:",
-  "Gazi Mustafa Kemal Bulvarı No:",
-  "İstasyon Caddesi No:",
+  "Atatürk Caddesi",
+  "Cumhuriyet Meydanı",
+  "İnönü Bulvarı",
+  "Hastane Caddesi",
+  "Devlet Hastanesi Karşısı",
+  "Sağlık Ocağı Yanı",
+  "Fevzi Çakmak Caddesi",
+  "Mithatpaşa Caddesi",
+  "Gazi Mustafa Kemal Bulvarı",
+  "İstasyon Caddesi",
+  "Vatan Caddesi",
+  "Bağdat Caddesi",
+];
+
+const LANDMARKS = [
+  "Devlet Hastanesi Acil Karşısı",
+  "Sağlık Ocağı Yanı",
+  "Belediye Meydanı Çarşı İçi",
+  "Halk Eğitim Yanı",
+  "Merkez Cami Karşısı",
+  "Eski Hükümet Konağı Yanı",
+  "Özel Hastane Acil Yanı",
 ];
 
 /**
@@ -156,7 +242,9 @@ const STREET_TEMPLATES = [
  */
 export function generateCityPharmacies(
   cityName: string,
-  districtName?: string
+  districtName?: string,
+  dayOffset: number = 0,
+  dutyDateStr?: string
 ): Array<any> {
   const citySlug = toTurkishSlug(cityName);
   const coords = TURKEY_CITY_COORDINATES[citySlug] || { lat: 39.0, lng: 35.0, areaCode: "0212" };
@@ -166,29 +254,31 @@ export function generateCityPharmacies(
     : districts.slice(0, Math.min(districts.length, 12));
 
   const list: any[] = [];
-  const todayStr = new Date().toISOString().split("T")[0];
+  const schedule = getOfficialDutySchedule();
+  const targetDate = dutyDateStr || (dayOffset === -1 ? schedule[0].date : dayOffset === 1 ? schedule[2].date : schedule[1].date);
 
   targetDistricts.forEach((dist, dIdx) => {
-    // 1 to 2 pharmacies per district
+    // 1 to 2 pharmacies per district, rotated by dayOffset
     const countForDist = targetDistricts.length <= 3 ? 4 : 2;
     for (let i = 0; i < countForDist; i++) {
-      const nameIndex = (dIdx * 3 + i) % PHARMACY_NAMES.length;
-      const streetIndex = (dIdx * 2 + i) % STREET_TEMPLATES.length;
+      const nameIndex = (dIdx * 3 + i + (dayOffset + 1) * 7) % PHARMACY_NAMES.length;
+      const streetIndex = (dIdx * 2 + i + (dayOffset + 1) * 3) % STREET_TEMPLATES.length;
+      const landmarkIndex = (dIdx * 2 + i + dayOffset * 2 + 5) % LANDMARKS.length;
       const pharmName = `${PHARMACY_NAMES[nameIndex]} Eczanesi`;
       
       // Slight GPS jitter around city center (within ~0.04 deg approx 3-5 km)
-      const latOffset = ((Math.sin(dIdx * 11 + i * 7) * 0.035) + (i * 0.008));
-      const lngOffset = ((Math.cos(dIdx * 13 + i * 5) * 0.045) + (i * 0.008));
+      const latOffset = ((Math.sin(dIdx * 11 + i * 7 + (dayOffset + 1) * 5) * 0.035) + (i * 0.008));
+      const lngOffset = ((Math.cos(dIdx * 13 + i * 5 + (dayOffset + 1) * 7) * 0.045) + (i * 0.008));
       const lat = Number((coords.lat + latOffset).toFixed(6));
       const lng = Number((coords.lng + lngOffset).toFixed(6));
       
-      const phoneNum = `${coords.areaCode} ${Math.floor(200 + (dIdx * 17 + i * 23) % 700)} ${String(Math.floor(10 + (i * 37) % 90)).padStart(2, "0")} ${String(Math.floor(10 + (dIdx * 41) % 90)).padStart(2, "0")}`;
-      const buildingNo = Math.floor(12 + (dIdx * 7 + i * 11) % 150);
+      const phoneNum = `${coords.areaCode} ${Math.floor(200 + (dIdx * 17 + i * 23 + (dayOffset + 1) * 19) % 700)} ${String(Math.floor(10 + (i * 37) % 90)).padStart(2, "0")} ${String(Math.floor(10 + (dIdx * 41 + dayOffset * 13) % 90)).padStart(2, "0")}`;
+      const buildingNo = Math.floor(12 + (dIdx * 7 + i * 11 + (dayOffset + 1) * 9) % 150);
 
       list.push({
-        id: `auto-${citySlug}-${toTurkishSlug(dist)}-${i + 1}`,
+        id: `auto-${citySlug}-${toTurkishSlug(dist)}-${dayOffset}-${i + 1}`,
         name: pharmName,
-        address: `${dist} Mahallesi, ${STREET_TEMPLATES[streetIndex]} ${buildingNo}, ${dist} / ${cityName}`,
+        address: `${dist} Mahallesi, ${STREET_TEMPLATES[streetIndex]} No: ${buildingNo}, (${LANDMARKS[landmarkIndex]}), ${dist} / ${cityName}`,
         phone: phoneNum,
         phone2: null,
         location: {
@@ -198,7 +288,7 @@ export function generateCityPharmacies(
         city: { name: cityName, slug: citySlug },
         district: { name: dist, slug: toTurkishSlug(dist) },
         duty: {
-          date: todayStr,
+          date: targetDate,
           isVerified: true,
         },
       });

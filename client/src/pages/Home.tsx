@@ -162,20 +162,151 @@ function MapPreview({
   );
 }
 
+function FormattedAddress({
+  address,
+  district,
+  city,
+}: {
+  address: string;
+  district?: string;
+  city?: string;
+}) {
+  const raw = address || "";
+
+  // Extract landmark / tarif in parentheses like "(Devlet Hastanesi Acil Karşısı)"
+  const landmarkMatch = raw.match(/\(([^)]+)\)/);
+  const landmark = landmarkMatch ? landmarkMatch[1] : null;
+  const withoutLandmark = raw.replace(/\([^)]+\)/, "").trim();
+
+  // Split by comma
+  const rawParts = withoutLandmark.split(",").map((s) => s.trim()).filter(Boolean);
+
+  let mahalle = "";
+  let caddeSokak = "";
+  let remaining = "";
+
+  rawParts.forEach((part) => {
+    if (/mah/i.test(part) && !mahalle) {
+      mahalle = part;
+    } else if (/cad|sok|bulv|meydan|yol|site|apt|no/i.test(part) && !caddeSokak) {
+      caddeSokak = part;
+    } else if (
+      !part.toLowerCase().includes(city?.toLowerCase() || "___") &&
+      !part.toLowerCase().includes(district?.toLowerCase() || "___")
+    ) {
+      remaining = remaining ? `${remaining}, ${part}` : part;
+    }
+  });
+
+  return (
+    <div className="space-y-1.5 text-left">
+      {mahalle ? (
+        <div className="flex items-start gap-1.5">
+          <MapPin size={15} className="text-red-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-extrabold text-gray-900 leading-snug">{mahalle}</p>
+            {caddeSokak && (
+              <p className="text-xs font-semibold text-gray-700 mt-0.5">
+                {caddeSokak} {remaining ? `· ${remaining}` : ""}
+              </p>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-start gap-1.5">
+          <MapPin size={15} className="text-red-600 shrink-0 mt-0.5" />
+          <p className="text-xs font-semibold text-gray-800 leading-snug">
+            {raw || `${district || ""} ${city || ""}`}
+          </p>
+        </div>
+      )}
+
+      {landmark && (
+        <div className="pl-5 pt-0.5">
+          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 bg-amber-50/90 border border-amber-200/90 px-2 py-0.5 rounded-md">
+            Tarif: {landmark}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InlineListAd({ index }: { index: number }) {
+  const adContents = [
+    {
+      title: "Acil Sağlık ve İlaç Danışma Hattı (ALO 184 SABİM)",
+      subtitle: "Nöbetçi eczanelerde aradığınız ilacı bulamadığınızda resmi sağlık danışma hattından 7/24 destek alabilirsiniz.",
+      tag: "SAĞLIK REHBERİ",
+      cta: "ALO 184 Bilgi",
+      link: "tel:184",
+    },
+    {
+      title: "e-Reçete ve Raporlu İlaç Temini Hatırlatması",
+      subtitle: "Nöbetçi eczanelerden e-reçete numaranız ve T.C. kimlik kartınız ile raporlu veya reçeteli ilaçlarınızı temin edebilirsiniz.",
+      tag: "ÖNEMLİ BİLGİ",
+      cta: "Reçete Sorgula",
+      link: "https://enabiz.gov.tr",
+    },
+    {
+      title: "7/24 Açık Nöbetçi Eczane ve İlk Yardım Noktaları",
+      subtitle: "Gece saatlerinde acil ilaç ihtiyaçlarınız için nöbetçi eczaneler sabah 09:00'a kadar kesintisiz hizmet vermektedir.",
+      tag: "KAMU DUYURUSU",
+      cta: "En Yakın Acil Servisler",
+      link: "#nasil-calisir",
+    },
+  ];
+
+  const ad = adContents[(index - 1) % adContents.length];
+
+  return (
+    <aside
+      className="w-full my-3 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-red-50/90 via-amber-50/70 to-red-50/80 border border-red-200/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+      aria-label="Sponsorlu duyuru ve sağlık rehberi"
+    >
+      <div className="flex items-start gap-3">
+        <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center shrink-0 shadow-xs font-black text-sm">
+          +
+        </div>
+        <div>
+          <div className="flex items-center gap-2 mb-0.5">
+            <span className="text-[10px] font-black uppercase tracking-wider text-red-700 bg-red-100/90 px-2 py-0.5 rounded">
+              {ad.tag}
+            </span>
+            <span className="text-[11px] text-gray-500 font-medium">Sponsorlu Bilgilendirme</span>
+          </div>
+          <h4 className="text-sm sm:text-base font-extrabold text-gray-900 leading-tight">
+            {ad.title}
+          </h4>
+          <p className="text-xs text-gray-600 mt-1 max-w-2xl leading-relaxed">
+            {ad.subtitle}
+          </p>
+        </div>
+      </div>
+      <a
+        href={ad.link}
+        target={ad.link.startsWith("http") ? "_blank" : undefined}
+        rel="noreferrer"
+        className="shrink-0 px-4 py-2 rounded-xl text-xs font-extrabold text-red-700 bg-white border border-red-300 hover:bg-red-600 hover:text-white transition-all shadow-2xs whitespace-nowrap self-stretch sm:self-center text-center"
+      >
+        {ad.cta} →
+      </a>
+    </aside>
+  );
+}
+
 function PharmacyCard({
   pharmacy,
   index,
   selected,
   onSelect,
   userLocation,
-  onRequestLocation,
 }: {
   pharmacy: RawPharmacy;
   index: number;
   selected: boolean;
   onSelect: () => void;
   userLocation?: { latitude: number; longitude: number } | null;
-  onRequestLocation?: () => void;
 }) {
   const isAddressRejected =
     !pharmacy.address ||
@@ -210,76 +341,82 @@ function PharmacyCard({
 
   return (
     <article
-      className={`pharmacy-card transition-all ${
-        selected ? "selected ring-2 ring-red-500 shadow-md" : "hover:border-gray-300"
+      className={`h-full flex flex-col justify-between p-5 rounded-2xl border transition-all cursor-pointer bg-white ${
+        selected
+          ? "border-red-600 ring-2 ring-red-500 shadow-md transform -translate-y-0.5"
+          : "border-gray-200 hover:border-red-300 hover:shadow-md"
       }`}
       onClick={onSelect}
     >
-      <div className="pharmacy-card-top">
-        <div>
-          <p className="pharmacy-kicker">
-            <span className="live-dot" /> {pharmacy.duty?.isVerified ? "DOĞRULANMIŞ NÖBETÇİ" : "ŞU ANDA NÖBETÇİ"}
-          </p>
-          <h3 className="text-xl font-extrabold text-gray-900">{pharmacy.name}</h3>
-          <p className="pharmacy-area font-medium text-gray-600">
-            {pharmacy.district?.name ? `${pharmacy.district.name} · ` : ""}
-            {pharmacy.city?.name || ""}
-          </p>
-        </div>
-        {currentDistance !== undefined ? (
-          <span className="distance-badge font-black bg-red-50 text-red-700 border border-red-200 px-2.5 py-1 rounded-full text-xs flex items-center gap-1 shadow-2xs">
-            <MapPin size={13} className="text-red-600 shrink-0" /> {formatDistance(currentDistance)}
-          </span>
-        ) : onRequestLocation ? (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onRequestLocation();
-            }}
-            className="text-[11px] text-gray-600 hover:text-red-700 font-bold bg-gray-50 hover:bg-red-50 px-2.5 py-1 rounded-full border border-gray-200 transition-colors flex items-center gap-1 cursor-pointer"
-            title="Konumuma olan mesafeyi hesapla"
-          >
-            <LocateFixed size={12} className="text-red-500" /> Mesafe Hesapla
-          </button>
-        ) : null}
-      </div>
-
-      <div className="pharmacy-details space-y-2">
-        {isAddressRejected ? (
-          <div className="flex items-start gap-2 text-xs bg-amber-50 text-amber-900 p-2.5 rounded-lg border border-amber-200">
-            <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
-            <div>
-              <strong>Adres teyit bekliyor:</strong> Resmi kaynak güvenlik sebebiyle adresi doğrulamamıştır. Lütfen
-              gitmeden önce eczaneyi telefonla arayınız.
-            </div>
+      {/* Top Header Section with Name, Area, and Automatic Distance */}
+      <div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-black uppercase tracking-wider text-green-700 flex items-center gap-1.5 mb-1">
+              <span className="live-dot shrink-0" />
+              {pharmacy.duty?.isVerified ? "DOĞRULANMIŞ NÖBETÇİ" : "ŞU ANDA NÖBETÇİ"}
+            </p>
+            <h3 className="text-lg sm:text-xl font-extrabold text-gray-900 truncate leading-tight">
+              {pharmacy.name}
+            </h3>
+            <p className="text-xs font-semibold text-gray-500 mt-0.5">
+              {pharmacy.district?.name ? `${pharmacy.district.name} · ` : ""}
+              {pharmacy.city?.name || ""}
+            </p>
           </div>
-        ) : (
-          <p className="text-sm text-gray-700">
-            <MapPin size={18} className="text-red-500 shrink-0 inline mr-1" /> {pharmacy.address}
-          </p>
-        )}
-        <p className="text-xs text-gray-500 font-medium">
-          <Clock3 size={16} className="inline text-gray-400 mr-1" /> Nöbet ertesi sabah 09:00'a kadar geçerlidir
-        </p>
+
+          {/* Automatic distance badge - Always visible based on live GPS or selected city */}
+          {currentDistance !== undefined && (
+            <span
+              className="shrink-0 font-extrabold bg-red-50 text-red-700 border border-red-200 px-2.5 py-1 rounded-full text-xs inline-flex items-center gap-1 shadow-2xs whitespace-nowrap"
+              title={
+                userLocation
+                  ? "Canlı konumunuza olan yaklaşık mesafe"
+                  : `${pharmacy.city?.name || "İl"} merkezine olan yaklaşık mesafe`
+              }
+            >
+              <MapPin size={13} className="text-red-600 shrink-0" />
+              {formatDistance(currentDistance)}
+            </span>
+          )}
+        </div>
+
+        {/* Middle Address Details - Formatted with Clear Mahalle / Cadde / Tarif separation */}
+        <div className="my-3 py-3 border-y border-gray-100 flex-1">
+          {isAddressRejected ? (
+            <div className="flex items-start gap-2 text-xs bg-amber-50 text-amber-900 p-2.5 rounded-lg border border-amber-200">
+              <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <strong>Adres teyit bekliyor:</strong> Resmi kaynak güvenlik sebebiyle adresi doğrulamamıştır. Lütfen gitmeden önce eczaneyi arayınız.
+              </div>
+            </div>
+          ) : (
+            <FormattedAddress
+              address={pharmacy.address || ""}
+              district={pharmacy.district?.name}
+              city={pharmacy.city?.name}
+            />
+          )}
+        </div>
       </div>
 
-      <div className="pharmacy-actions">
+      {/* Action Buttons Pinned at the Bottom for Uniform Alignment */}
+      <div className="mt-auto pt-2 grid grid-cols-2 gap-2">
         <a
-          className="button button-secondary flex items-center justify-center gap-2 font-bold"
+          className="button button-secondary flex items-center justify-center gap-1.5 font-bold text-xs sm:text-sm py-2 px-3 rounded-xl"
           href={`tel:${cleanPhone}`}
           onClick={(event) => event.stopPropagation()}
         >
-          <Phone size={18} /> {pharmacy.phone || "Telefon Et"}
+          <Phone size={15} /> {pharmacy.phone || "Telefon Et"}
         </a>
         <a
-          className="button button-quiet flex items-center justify-center gap-2 font-semibold"
+          className="button button-quiet flex items-center justify-center gap-1.5 font-semibold text-xs sm:text-sm py-2 px-3 rounded-xl text-red-700 bg-red-50/80 hover:bg-red-100/80"
           href={mapsUrl}
           target="_blank"
           rel="noreferrer"
           onClick={(event) => event.stopPropagation()}
         >
-          <Navigation size={18} /> Yol Tarifi
+          <Navigation size={15} /> Yol Tarifi
         </a>
       </div>
     </article>
@@ -562,45 +699,71 @@ export default function Home() {
       {/* Results Section */}
       <section className="results-section" id="sonuclar">
         <div className="container">
-          {/* Results Header with Day Tabs & Cache Indicator */}
-          <div className="results-heading flex flex-col md:flex-row md:items-end justify-between gap-4">
+          {/* Results Header with Day Tabs on Top Right */}
+          <div className="results-heading flex flex-col md:flex-row md:items-end justify-between gap-4 pb-2">
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <p className="eyebrow uppercase font-bold tracking-wider text-red-600">
                   {city} {district !== "Tümü" ? `· ${district}` : "· TÜM İLÇELER"}
                 </p>
                 {sourceNote && (
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200">
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
                     {sourceNote}
                   </span>
                 )}
               </div>
-              <h2>Nöbetçi Eczaneler</h2>
+              <h2 className="text-2xl sm:text-3xl font-black text-gray-900 mt-1">
+                Nöbetçi Eczaneler
+              </h2>
+              {activeDayGroup && (
+                <p className="text-xs font-semibold text-gray-500 mt-0.5">
+                  {activeDayGroup.day === "Dün"
+                    ? "Dünkü nöbet listesi arşivi"
+                    : activeDayGroup.day === "Bugün"
+                    ? "Aktif nöbet dönemi (Sabah 09:00'a kadar geçerli)"
+                    : "Gelecek gün nöbet çizelgesi"}
+                </p>
+              )}
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Day selection tabs (Yesterday, Today, Tomorrow) from single API call */}
-              {daysData.length > 1 && (
-                <div className="inline-flex bg-gray-100 p-1 rounded-xl border border-gray-200">
-                  {daysData.map((dGroup, idx) => (
-                    <button
-                      key={dGroup.day || idx}
-                      type="button"
-                      onClick={() => {
-                        setSelectedDayIndex(idx);
-                        setSelectedPharmacy(0);
-                      }}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                        selectedDayIndex === idx
-                          ? "bg-white text-gray-900 shadow-xs border border-gray-200"
-                          : "text-gray-600 hover:text-gray-900"
+            {/* Dün / Bugün / Yarın Buttons placed directly at top-right of the list */}
+            <div className="flex items-center gap-1.5 p-1 bg-gray-100/90 rounded-2xl border border-gray-200 self-start md:self-auto shadow-2xs">
+              {daysData.map((dGroup, idx) => {
+                const isSelected = selectedDayIndex === idx;
+                return (
+                  <button
+                    key={dGroup.day || idx}
+                    type="button"
+                    onClick={() => {
+                      setSelectedDayIndex(idx);
+                      setSelectedPharmacy(0);
+                    }}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                      isSelected
+                        ? "bg-red-600 text-white shadow-xs"
+                        : "text-gray-700 hover:text-gray-950 hover:bg-white/80"
+                    }`}
+                  >
+                    <span>{dGroup.day}</span>
+                    {dGroup.date && (
+                      <span
+                        className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                          isSelected ? "bg-red-700 text-white" : "text-gray-500"
+                        }`}
+                      >
+                        {dGroup.date.slice(5).replace("-", "/")}
+                      </span>
+                    )}
+                    <span
+                      className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-full ${
+                        isSelected ? "bg-white text-red-600" : "bg-gray-200 text-gray-700"
                       }`}
                     >
-                      {dGroup.day || dGroup.date} ({dGroup.count})
-                    </button>
-                  ))}
-                </div>
-              )}
+                      {dGroup.count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -609,7 +772,7 @@ export default function Home() {
             <div className="py-24 text-center space-y-4">
               <Loader2 size={42} className="animate-spin text-red-600 mx-auto" />
               <p className="text-base font-bold text-gray-700">Nöbetçi eczaneler alınıyor...</p>
-              <p className="text-xs text-gray-400">Akıllı önbellek kontrol ediliyor</p>
+              <p className="text-xs text-gray-400">Akıllı önbellek ve resmi kaynaklar kontrol ediliyor</p>
             </div>
           ) : activePharmacies.length === 0 ? (
             <div className="py-16 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-300 p-8 space-y-3">
@@ -630,17 +793,24 @@ export default function Home() {
               </button>
             </div>
           ) : (
-            <div className="pharmacy-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="pharmacy-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 items-stretch mt-4">
               {activePharmacies.map((pharmacy, index) => (
-                <div key={pharmacy.id || pharmacy.name + index} id={`pharmacy-card-${index}`}>
-                  <PharmacyCard
-                    pharmacy={pharmacy}
-                    index={index}
-                    selected={index === selectedPharmacy}
-                    onSelect={() => setSelectedPharmacy(index)}
-                    userLocation={userLocation}
-                    onRequestLocation={requestLocationAndCalculate}
-                  />
+                <div key={pharmacy.id || pharmacy.name + index} className="contents">
+                  <div id={`pharmacy-card-${index}`} className="h-full">
+                    <PharmacyCard
+                      pharmacy={pharmacy}
+                      index={index}
+                      selected={index === selectedPharmacy}
+                      onSelect={() => setSelectedPharmacy(index)}
+                      userLocation={userLocation}
+                    />
+                  </div>
+                  {/* Reklam: 4 eczanede bir araya sponsorlu duyuru/reklam kutusu eklenir */}
+                  {(index + 1) % 4 === 0 && (
+                    <div className="col-span-full">
+                      <InlineListAd index={Math.floor((index + 1) / 4)} />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
