@@ -178,7 +178,8 @@ select { appearance: none; min-height: 48px; width: 100%; border: 1px solid #cfc
   .mobile-nav { display: grid; position: absolute; top: 61px; left: 0; right: 0; padding: 10px 16px 16px; background: #fff; border-bottom: 1px solid #ddd; box-shadow: 0 10px 20px rgba(0,0,0,.08); z-index: 50; }
   .mobile-nav-link { padding: 12px 8px; border-bottom: 1px solid #eee; color: #222; font-weight: 800; font-size: 16px; }
   .mobile-nav-link:last-child { border: 0; }
-  .hero-section { min-height: 0; padding: 24px 12px 28px; }
+  .hero-section { min-height: calc(100dvh - 62px); box-sizing: border-box; padding: 24px 12px 28px; }
+  .hero-content { min-height: calc(100dvh - 62px); }
   .hero-content h1 { font-size: clamp(28px, 8vw, 42px); }
   .hero-lead { font-size: 16px; margin-bottom: 16px; }
   .search-panel { padding: 14px 12px; }

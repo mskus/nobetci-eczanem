@@ -219,6 +219,7 @@ function FormattedAddress({
   if (cityLower && !detailedFullAddress.startsWith("Adres bilgisi kaynaktan") && !detailedFullAddress.toLocaleLowerCase("tr-TR").includes(cityLower)) {
     detailedFullAddress += `, ${district && district !== "Tümü" ? district + " / " : ""}${city}`;
   }
+  const routeDescription = landmarkText || "Konuma göre rota için aşağıdaki Yol Tarifi düğmesini kullanın.";
 
   return (
     <div className="space-y-2 text-left">
@@ -233,18 +234,16 @@ function FormattedAddress({
       </div>
 
       {/* Prominent Yellow / Amber Landmark Box */}
-      {landmarkText && (
-        <div className="pl-5 pt-0.5">
-          <div className="flex items-start gap-1.5 p-1.5 px-2.5 rounded-lg bg-amber-50/95 border border-amber-300/90 text-amber-950 shadow-2xs">
-            <span className="text-[10px] font-black uppercase text-amber-800 bg-amber-200/90 px-1.5 py-0.2 rounded shrink-0">
-              TARİF
-            </span>
-            <p className="text-[11px] font-extrabold leading-tight flex-1 text-amber-950 break-words">
-              {landmarkText}
-            </p>
-          </div>
+      <div className="pl-5 pt-0.5">
+        <div className="flex items-start gap-1.5 p-1.5 px-2.5 rounded-lg bg-amber-50/95 border border-amber-300/90 text-amber-950 shadow-2xs">
+          <span className="text-[10px] font-black uppercase text-amber-800 bg-amber-200/90 px-1.5 py-0.2 rounded shrink-0">
+            ADRES TARİFİ
+          </span>
+          <p className="text-[11px] font-extrabold leading-tight flex-1 text-amber-950 break-words">
+            {routeDescription}
+          </p>
         </div>
-      )}
+      </div>
     </div>
   );
 }
