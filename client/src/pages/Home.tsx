@@ -16,12 +16,14 @@ import {
   Loader2,
   Calendar,
   Layers,
+  LocateFixed,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AdRail, MobileAd, SectionHeading } from "@/components/SiteLayout";
 import { RealLeafletMap } from "@/components/RealLeafletMap";
 import { useQuota } from "@/hooks/useQuota";
 import { toTurkishSlug } from "@shared/turkeyDistricts";
+import { formatDistance, calculateDistanceKm } from "@/lib/turkeyGeoData";
 import {
   getLocalCities,
   getLocalDistricts,
@@ -165,11 +167,15 @@ function PharmacyCard({
   index,
   selected,
   onSelect,
+  userLocation,
+  onRequestLocation,
 }: {
   pharmacy: RawPharmacy;
   index: number;
   selected: boolean;
   onSelect: () => void;
+  userLocation?: { latitude: number; longitude: number } | null;
+  onRequestLocation?: () => void;
 }) {
   const isAddressRejected =
     !pharmacy.address ||
@@ -189,6 +195,19 @@ function PharmacyCard({
             (pharmacy.city?.name || "")
         )}`;
 
+  const currentDistance = useMemo(() => {
+    if (pharmacy.distance !== undefined) return pharmacy.distance;
+    if (userLocation && pharmacy.location?.latitude && pharmacy.location?.longitude) {
+      return calculateDistanceKm(
+        userLocation.latitude,
+        userLocation.longitude,
+        pharmacy.location.latitude,
+        pharmacy.location.longitude
+      );
+    }
+    return undefined;
+  }, [pharmacy.distance, pharmacy.location, userLocation]);
+
   return (
     <article
       className={`pharmacy-card transition-all ${
@@ -207,13 +226,23 @@ function PharmacyCard({
             {pharmacy.city?.name || ""}
           </p>
         </div>
-        {pharmacy.distance !== undefined && (
-          <span className="distance-badge font-bold bg-red-50 text-red-700 border border-red-200">
-            {pharmacy.distance < 1
-              ? `${Math.round(pharmacy.distance * 1000)} m`
-              : `${pharmacy.distance.toFixed(1)} km`}
+        {currentDistance !== undefined ? (
+          <span className="distance-badge font-black bg-red-50 text-red-700 border border-red-200 px-2.5 py-1 rounded-full text-xs flex items-center gap-1 shadow-2xs">
+            <MapPin size={13} className="text-red-600 shrink-0" /> {formatDistance(currentDistance)}
           </span>
-        )}
+        ) : onRequestLocation ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRequestLocation();
+            }}
+            className="text-[11px] text-gray-600 hover:text-red-700 font-bold bg-gray-50 hover:bg-red-50 px-2.5 py-1 rounded-full border border-gray-200 transition-colors flex items-center gap-1 cursor-pointer"
+            title="Konumuma olan mesafeyi hesapla"
+          >
+            <LocateFixed size={12} className="text-red-500" /> Mesafe Hesapla
+          </button>
+        ) : null}
       </div>
 
       <div className="pharmacy-details space-y-2">
@@ -227,7 +256,7 @@ function PharmacyCard({
           </div>
         ) : (
           <p className="text-sm text-gray-700">
-            <MapPin size={18} className="text-red-500 shrink-0 inline" /> {pharmacy.address}
+            <MapPin size={18} className="text-red-500 shrink-0 inline mr-1" /> {pharmacy.address}
           </p>
         )}
         <p className="text-xs text-gray-500 font-medium">
@@ -267,11 +296,28 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [daysData, setDaysData] = useState<DayDutyGroup[]>([]);
   const [selectedPharmacy, setSelectedPharmacy] = useState(0);
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationNote, setLocationNote] = useState("Konumunuz paylaşılmadan arama yapılmaz.");
   const [lastWasCache, setLastWasCache] = useState<boolean | undefined>(undefined);
   const [sourceNote, setSourceNote] = useState<string>("");
 
   const { updateQuota } = useQuota();
+
+  // Try silent GPS retrieval on mount if permission already granted
+  useEffect(() => {
+    if (navigator.geolocation && navigator.permissions) {
+      navigator.permissions.query({ name: "geolocation" as any }).then((result) => {
+        if (result.state === "granted") {
+          navigator.geolocation.getCurrentPosition((pos) => {
+            setUserLocation({
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+            });
+          });
+        }
+      }).catch(() => {});
+    }
+  }, []);
 
   // District list automatically syncs when city changes (instant, 0 network, no <!DOCTYPE error)
   const handleCityChange = (newCity: string) => {
@@ -279,19 +325,24 @@ export default function Home() {
     const newDistricts = getLocalDistricts(newCity);
     setDistrictList(newDistricts);
     setDistrict("Tümü");
-    fetchPharmacies(newCity, "Tümü");
+    fetchPharmacies(newCity, "Tümü", userLocation);
   };
 
   const handleDistrictChange = (newDistrict: string) => {
     setDistrict(newDistrict);
-    fetchPharmacies(city, newDistrict);
+    fetchPharmacies(city, newDistrict, userLocation);
   };
 
   // Automated Multi-Source Pool & Fallback Fetcher
-  const fetchPharmacies = async (targetCity: string, targetDistrict?: string) => {
+  const fetchPharmacies = async (
+    targetCity: string,
+    targetDistrict?: string,
+    locOverride?: { latitude: number; longitude: number } | null
+  ) => {
     setLoading(true);
+    const activeLoc = locOverride !== undefined ? locOverride : userLocation;
     try {
-      const result = await fetchDutyPharmaciesAuto(targetCity, targetDistrict);
+      const result = await fetchDutyPharmaciesAuto(targetCity, targetDistrict, activeLoc);
       if (result.success && result.days.length > 0) {
         setDaysData(result.days);
         setSourceNote(result.sourceName);
@@ -316,6 +367,27 @@ export default function Home() {
     fetchPharmacies("İstanbul", "Tümü");
   }, []);
 
+  // Request GPS and calculate distances
+  const requestLocationAndCalculate = () => {
+    if (!navigator.geolocation) {
+      toast.error("Tarayıcınız konum servisini desteklemiyor.");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const loc = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+        setUserLocation(loc);
+        toast.success("Konumunuz tespit edildi, mesafeler güncellendi.");
+        fetchPharmacies(city, district, loc);
+      },
+      () => {
+        toast.error("Konum izni alınamadı. Tarayıcı ayarlarından konumu açabilirsiniz.");
+      },
+      { timeout: 8000 }
+    );
+  };
+
   // GPS Nearby with automatic multi-source fallback
   const findNearby = () => {
     if (!navigator.geolocation) {
@@ -330,6 +402,8 @@ export default function Home() {
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude, longitude } = pos.coords;
+        const loc = { latitude, longitude };
+        setUserLocation(loc);
         setLocationNote(`Konumunuz tespit edildi (${latitude.toFixed(3)}, ${longitude.toFixed(3)}). En yakın nöbetçiler getiriliyor.`);
 
         try {
@@ -341,7 +415,7 @@ export default function Home() {
             setSelectedDayIndex(0);
             setSelectedPharmacy(0);
             const count = result.days[0]?.pharmacies?.length || 0;
-            toast.success(`${count} adet nöbetçi eczane bulundu!`);
+            toast.success(`${count} adet nöbetçi eczane mesafelerine göre sıralandı!`);
             document.getElementById("sonuclar")?.scrollIntoView({ behavior: "smooth", block: "start" });
           } else {
             toast.error("Yakınınızda eczane bulunamadı");
@@ -399,11 +473,12 @@ export default function Home() {
               <span>veya 81 il ve ilçe seçin</span>
             </div>
 
-            {/* Otomatik Canlı Harita - Kaynak Seçici Yerinde */}
+            {/* Otomatik Canlı Harita - Gerçek Koordinatlarla */}
             <div className="w-full my-4 rounded-2xl overflow-hidden border border-gray-200 shadow-md bg-white">
               <RealLeafletMap
                 pharmacies={activePharmacies}
                 selectedPharmacy={selectedPharmacy}
+                userLocation={userLocation}
                 onSelect={(idx) => {
                   setSelectedPharmacy(idx);
                   const el = document.getElementById(`pharmacy-card-${idx}`);
@@ -563,6 +638,8 @@ export default function Home() {
                     index={index}
                     selected={index === selectedPharmacy}
                     onSelect={() => setSelectedPharmacy(index)}
+                    userLocation={userLocation}
+                    onRequestLocation={requestLocationAndCalculate}
                   />
                 </div>
               ))}

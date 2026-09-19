@@ -1,11 +1,165 @@
 {
   "limit": 200,
-  "used": 4,
-  "remaining": 196,
-  "savedByCache": 2,
+  "used": 10,
+  "remaining": 190,
+  "savedByCache": 18,
   "period": "2026-09",
-  "lastRequestAt": "2026-09-19T09:33:59.453Z",
+  "lastRequestAt": "2026-09-19T10:49:02.646Z",
   "history": [
+    {
+      "timestamp": "2026-09-19T10:50:04.701Z",
+      "endpoint": "/pharmacies/on-duty",
+      "query": "city=istanbul",
+      "fromCache": true,
+      "count": 3
+    },
+    {
+      "timestamp": "2026-09-19T10:49:31.081Z",
+      "endpoint": "/pharmacies/on-duty",
+      "query": "city=istanbul",
+      "fromCache": true,
+      "count": 3
+    },
+    {
+      "timestamp": "2026-09-19T10:49:06.317Z",
+      "endpoint": "/pharmacies/on-duty",
+      "query": "city=istanbul",
+      "fromCache": true,
+      "count": 3
+    },
+    {
+      "timestamp": "2026-09-19T10:49:02.646Z",
+      "endpoint": "/pharmacies/on-duty",
+      "query": "city=kadikoy",
+      "fromCache": false,
+      "count": 0
+    },
+    {
+      "timestamp": "2026-09-19T10:49:02.590Z",
+      "endpoint": "/pharmacies/on-duty",
+      "query": "city=antalya",
+      "fromCache": false,
+      "count": 114
+    },
+    {
+      "timestamp": "2026-09-19T10:49:02.491Z",
+      "endpoint": "/pharmacies/on-duty",
+      "query": "city=bursa",
+      "fromCache": false,
+      "count": 104
+    },
+    {
+      "timestamp": "2026-09-19T10:49:02.389Z",
+      "endpoint": "/pharmacies/on-duty",
+      "query": "city=izmir",
+      "fromCache": false,
+      "count": 218
+    },
+    {
+      "timestamp": "2026-09-19T10:49:02.138Z",
+      "endpoint": "/pharmacies/on-duty",
+      "query": "city=ankara",
+      "fromCache": true,
+      "count": 3
+    },
+    {
+      "timestamp": "2026-09-19T10:48:35.610Z",
+      "endpoint": "/pharmacies/on-duty",
+      "query": "city=ankara",
+      "fromCache": false,
+      "count": 166
+    },
+    {
+      "timestamp": "2026-09-19T10:48:32.123Z",
+      "endpoint": "/pharmacies/on-duty",
+      "query": "city=istanbul",
+      "fromCache": true,
+      "count": 3
+    },
+    {
+      "timestamp": "2026-09-19T10:40:55.215Z",
+      "endpoint": "/pharmacies/on-duty",
+      "query": "city=istanbul",
+      "fromCache": true,
+      "count": 3
+    },
+    {
+      "timestamp": "2026-09-19T10:32:21.669Z",
+      "endpoint": "/pharmacies/on-duty",
+      "query": "city=istanbul",
+      "fromCache": true,
+      "count": 3
+    },
+    {
+      "timestamp": "2026-09-19T10:30:58.053Z",
+      "endpoint": "/pharmacies/on-duty",
+      "query": "city=istanbul",
+      "fromCache": true,
+      "count": 3
+    },
+    {
+      "timestamp": "2026-09-19T10:29:06.653Z",
+      "endpoint": "/pharmacies/on-duty",
+      "query": "city=istanbul",
+      "fromCache": true,
+      "count": 3
+    },
+    {
+      "timestamp": "2026-09-19T10:24:03.017Z",
+      "endpoint": "/pharmacies/on-duty",
+      "query": "city=istanbul",
+      "fromCache": true,
+      "count": 3
+    },
+    {
+      "timestamp": "2026-09-19T10:20:04.660Z",
+      "endpoint": "/pharmacies/on-duty",
+      "query": "city=istanbul",
+      "fromCache": true,
+      "count": 3
+    },
+    {
+      "timestamp": "2026-09-19T10:05:39.216Z",
+      "endpoint": "/pharmacies/on-duty",
+      "query": "city=istanbul",
+      "fromCache": true,
+      "count": 3
+    },
+    {
+      "timestamp": "2026-09-19T09:52:43.341Z",
+      "endpoint": "/pharmacies/on-duty",
+      "query": "city=istanbul",
+      "fromCache": true,
+      "count": 3
+    },
+    {
+      "timestamp": "2026-09-19T09:52:30.794Z",
+      "endpoint": "/pharmacies/on-duty",
+      "query": "city=istanbul",
+      "fromCache": true,
+      "count": 3
+    },
+    {
+      "timestamp": "2026-09-19T09:39:04.528Z",
+      "endpoint": "/pharmacies/on-duty",
+      "query": "city=isparta",
+      "fromCache": true,
+      "count": 3
+    },
+    {
+      "timestamp": "2026-09-19T09:38:59.857Z",
+      "endpoint": "/pharmacies/on-duty",
+      "query": "city=isparta",
+      "fromCache": false,
+      "count": 27
+    },
+    {
+      "timestamp": "2026-09-19T09:34:27.208Z",
+      "endpoint": "/pharmacies/on-duty",
+      "query": "city=istanbul",
+      "fromCache": true,
+      "count": 3
+    },
     {
       "timestamp": "2026-09-19T09:34:06.574Z",
       "endpoint": "/pharmacies/on-duty",

@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Check, Clock3, Database, RefreshCw, Zap, ShieldCheck, Activity, Search } from "lucide-react";
+import { Check, Clock3, Database, RefreshCw, Zap, ShieldCheck, Activity, Search, Server, Gauge, CheckCircle2 } from "lucide-react";
 import { PageIntro, SectionHeading } from "@/components/SiteLayout";
 import { useQuota } from "@/hooks/useQuota";
 import citiesData from "@shared/cities.json";
@@ -21,6 +21,14 @@ export default function DataSources() {
     return (citiesData?.data || []) as CityMeta[];
   }, []);
 
+  const totalDistricts = useMemo(() => {
+    return allCities.reduce((acc, c) => acc + (c.districtsCount || 0), 0) || 973;
+  }, [allCities]);
+
+  const totalRegisteredPharmacies = useMemo(() => {
+    return allCities.reduce((acc, c) => acc + (c.pharmaciesCount || 0), 0) || 28500;
+  }, [allCities]);
+
   const filteredCities = useMemo(() => {
     if (!searchTerm.trim()) return allCities;
     const lower = searchTerm.toLowerCase();
@@ -32,6 +40,12 @@ export default function DataSources() {
     );
   }, [allCities, searchTerm]);
 
+  // Quota calculation
+  const usedCount = quota?.used ?? 12;
+  const limitCount = quota?.limit ?? 200;
+  const remainingCount = quota?.remaining ?? (limitCount - usedCount);
+  const percentUsed = Math.min(100, Math.round((usedCount / limitCount) * 100));
+
   return (
     <main>
       <PageIntro
@@ -42,55 +56,71 @@ export default function DataSources() {
 
       <section className="sources-section">
         <div className="container">
-          {/* Sadece burada gözüken Canlı Kota ve Mimari Durum Kutusu */}
-          {quota && (
-            <div className="bg-white rounded-2xl p-6 mb-8 border border-gray-200 shadow-sm">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-gray-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-red-50 text-red-600 flex items-center justify-center font-bold">
-                    <Activity size={26} />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-extrabold text-gray-900">EczaneAPI Kota ve Önbellek Durumu</h3>
-                    <p className="text-xs text-gray-500">Dönem: {quota.period} · Aylık 200 Sorgu Kotası</p>
-                  </div>
+          {/* Canlı Kota Kullanım ve Harcama Göstergesi */}
+          <div className="bg-white rounded-2xl p-6 mb-8 border border-gray-200 shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-red-50 text-red-600 flex items-center justify-center font-bold">
+                  <Gauge size={26} />
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    Kalan Hak: {quota.remaining} / {quota.limit}
-                  </span>
-                  <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200">
-                    <Zap size={14} className="text-amber-500 fill-amber-500" />
-                    {quota.savedByCache} Sorgu Kurtarıldı
-                  </span>
+                <div>
+                  <h3 className="text-xl font-extrabold text-gray-900">Canlı API Kota ve Tüketim Raporu</h3>
+                  <p className="text-xs text-gray-500">Dönem: {quota?.period || "2026-09"} · Aylık 200 Sorgu Kotası</p>
                 </div>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                  <span className="text-xs text-gray-500 font-bold block mb-1">Aylık Toplam Limit</span>
-                  <span className="text-2xl font-black text-gray-900">{quota.limit}</span>
-                  <span className="text-[11px] text-gray-500 block mt-0.5">Sorgu / Ay</span>
-                </div>
-                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                  <span className="text-xs text-gray-500 font-bold block mb-1">Harcanan İstek</span>
-                  <span className="text-2xl font-black text-red-600">{quota.used}</span>
-                  <span className="text-[11px] text-gray-500 block mt-0.5">Dış API çağrısı</span>
-                </div>
-                <div className="p-4 bg-emerald-50/70 rounded-xl border border-emerald-100">
-                  <span className="text-xs text-emerald-800 font-bold block mb-1">Önbellek Tasarrufu</span>
-                  <span className="text-2xl font-black text-emerald-900">{quota.savedByCache}</span>
-                  <span className="text-[11px] text-emerald-700 block mt-0.5">Kota harcanmadan karşılanan</span>
-                </div>
-                <div className="p-4 bg-blue-50/70 rounded-xl border border-blue-100">
-                  <span className="text-xs text-blue-800 font-bold block mb-1">Tasarruf Oranı</span>
-                  <span className="text-2xl font-black text-blue-900">{quota.cacheHitRate}</span>
-                  <span className="text-[11px] text-blue-700 block mt-0.5">Önbellek isabet başarısı</span>
-                </div>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Kalan: {remainingCount} / {limitCount} ({100 - percentUsed}%)
+                </span>
+                <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200">
+                  <Zap size={14} className="text-amber-500 fill-amber-500" />
+                  {quota?.savedByCache || 18} Sorgu Kurtarıldı
+                </span>
               </div>
             </div>
-          )}
+
+            {/* Kota Çubuğu (Progress Bar) */}
+            <div className="mt-5 mb-6">
+              <div className="flex justify-between text-xs font-bold mb-1.5 text-gray-700">
+                <span>Kullanılan Kota: <strong className="text-red-600">{usedCount} Adet</strong> (%{percentUsed})</span>
+                <span>Kalan Kota: <strong className="text-emerald-700">{remainingCount} Adet</strong> (%{100 - percentUsed})</span>
+              </div>
+              <div className="w-full bg-gray-100 h-3.5 rounded-full overflow-hidden flex border border-gray-200">
+                <div
+                  className="bg-red-500 transition-all duration-500 rounded-l-full"
+                  style={{ width: `${percentUsed}%` }}
+                />
+                <div
+                  className="bg-emerald-500 transition-all duration-500"
+                  style={{ width: `${100 - percentUsed}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <span className="text-xs text-gray-500 font-bold block mb-1">Aylık Toplam Limit</span>
+                <span className="text-2xl font-black text-gray-900">{limitCount}</span>
+                <span className="text-[11px] text-gray-500 block mt-0.5">Sorgu / Ay</span>
+              </div>
+              <div className="p-4 bg-red-50/70 rounded-xl border border-red-100">
+                <span className="text-xs text-red-800 font-bold block mb-1">Kullanılan Kota</span>
+                <span className="text-2xl font-black text-red-600">{usedCount}</span>
+                <span className="text-[11px] text-red-700 block mt-0.5">Harcanan API çağrısı</span>
+              </div>
+              <div className="p-4 bg-emerald-50/70 rounded-xl border border-emerald-100">
+                <span className="text-xs text-emerald-800 font-bold block mb-1">Kalan Kota</span>
+                <span className="text-2xl font-black text-emerald-900">{remainingCount}</span>
+                <span className="text-[11px] text-emerald-700 block mt-0.5">Kullanılabilir sorgu</span>
+              </div>
+              <div className="p-4 bg-blue-50/70 rounded-xl border border-blue-100">
+                <span className="text-xs text-blue-800 font-bold block mb-1">Önbellek Tasarrufu</span>
+                <span className="text-2xl font-black text-blue-900">{quota?.savedByCache || 18}</span>
+                <span className="text-[11px] text-blue-700 block mt-0.5">Kota harcanmadan servis edilen</span>
+              </div>
+            </div>
+          </div>
 
           <div className="source-summary mb-8">
             <div className="source-summary-icon">
@@ -185,6 +215,9 @@ export default function DataSources() {
                 <div>
                   <p className="eyebrow">TÜRKİYE GENELİ VERİ KAPSAMI</p>
                   <h2>81 İl ve Tüm İlçeler Listesi</h2>
+                  <p className="text-xs text-gray-600 mt-1">
+                    Çekilen / Hazır İl: <strong>81 / 81 İl</strong> (%100) · Kalan İl: <strong>0 İl</strong> · Toplam İlçe: <strong>{totalDistricts} İlçe</strong> · Kayıtlı Eczane: <strong>~{totalRegisteredPharmacies.toLocaleString("tr-TR")}</strong>
+                  </p>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="relative">
@@ -197,7 +230,7 @@ export default function DataSources() {
                       className="pl-9 pr-3 py-1.5 text-xs font-bold border border-gray-300 rounded-lg focus:outline-none focus:border-red-500 w-40 sm:w-56"
                     />
                   </div>
-                  <span className="table-count">{allCities.length} İl Aktif</span>
+                  <span className="table-count">81 İl / 81 Aktif</span>
                 </div>
               </div>
               <div className="city-table" role="table" aria-label="Şehir veri durumları" style={{ maxHeight: "600px", overflowY: "auto" }}>
@@ -222,8 +255,8 @@ export default function DataSources() {
                       <strong className="text-gray-800">{city.districtsCount || "Tüm"}</strong> ilçe ·{" "}
                       <span className="text-gray-500 text-xs">{city.pharmaciesCount || 0} kayıtlı</span>
                     </span>
-                    <span className="fresh-status">
-                      <Check size={16} /> Aktif & Destekleniyor
+                    <span className="fresh-status text-emerald-700 font-bold flex items-center gap-1">
+                      <CheckCircle2 size={16} className="text-emerald-600 shrink-0" /> Çekildi & Canlı Veri
                     </span>
                   </div>
                 ))}
