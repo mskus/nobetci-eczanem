@@ -617,18 +617,18 @@ export default function Home() {
 
   return (
     <main>
-      <section className="hero-section">
+      <section className="hero-section py-3 sm:py-8">
         <AdRail side="left" />
         <div className="hero-content container">
-          <h1>
+          <h1 className="text-lg sm:text-3xl font-black mb-2 sm:mb-4">
             En Yakın <span>Nöbetçi Eczaneyi</span> Bul
           </h1>
 
-          <div className="search-panel max-w-2xl mx-auto bg-white p-4 sm:p-5 rounded-2xl shadow-xl border border-red-100">
-            {/* GPS Butonu — İnce, Şık ve Temayla Uyumlu */}
+          <div className="search-panel max-w-2xl mx-auto bg-white p-3 sm:p-5 rounded-2xl shadow-xl border border-red-100">
+            {/* Nöbetçi Eczaneleri Göster Butonu */}
             <button
               type="button"
-              className="w-full h-12 sm:h-13 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-sm sm:text-base shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
+              className="w-full h-11 sm:h-13 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-sm sm:text-base shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
               onClick={findNearby}
               disabled={loading}
             >
@@ -637,11 +637,11 @@ export default function Home() {
               ) : (
                 <LocateFixed className="w-5 h-5 text-white shrink-0" />
               )}
-              <span>Yakınımdaki Eczaneleri Bul (GPS)</span>
+              <span>Nöbetçi Eczaneleri Göster</span>
             </button>
 
-            {/* Otomatik Canlı Harita - Düzgün ve Tam Oturan Görünüm */}
-            <div className="w-full my-4 rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white relative z-0">
+            {/* Otomatik Canlı Harita - Kompakt Mobil Yükseklik */}
+            <div className="w-full my-3 sm:my-4 rounded-xl sm:rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white relative z-0 h-36 sm:h-64">
               <RealLeafletMap
                 pharmacies={activePharmacies}
                 selectedPharmacy={selectedPharmacy}
@@ -656,8 +656,8 @@ export default function Home() {
             </div>
 
             {/* Yaşlılar ve Herkes İçin Son Derece Sade İl / İlçe Seçimi */}
-            <div className="bg-slate-50/90 p-4 sm:p-5 rounded-2xl border-2 border-slate-200">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div className="bg-slate-50/90 p-3 sm:p-5 rounded-xl sm:rounded-2xl border-2 border-slate-200">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3.5">
                 {/* 1. Şehir / İl Seçimi */}
                 <div>
                   <label className="block text-sm sm:text-base font-extrabold text-slate-900 mb-1.5">

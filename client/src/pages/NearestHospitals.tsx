@@ -31,7 +31,9 @@ import {
   TURKEY_DISTRICT_COORDINATES,
   calculateDistanceKm,
   formatDistance,
+  findNearestCityAndDistrict,
 } from "@/lib/turkeyGeoData";
+import { getCachedUserLocation, requestAndCacheUserLocation } from "@/lib/globalLocation";
 import { toTurkishSlug } from "@shared/turkeyDistricts";
 import { toast } from "sonner";
 
@@ -120,7 +122,7 @@ function HospitalLeafletMap({
             transform: scale(${isSelected ? 1.15 : 1});
             transition: all 0.2s;
           ">
-            <span style="background:rgba(255,255,255,0.25);padding:1px 4px;border-radius:4px;font-size:9px;">${badgeText}</span>
+            <span style="background:rgba(255,255,255,0.25);padding:1px 4px;border-radius:4px;font-size:9px;">#${idx + 1}</span>
             <span>${fac.name.replace(/Hastanesi|Sağlık Ocağı|Aile Sağlığı Merkezi|Sağlık Kabini/gi, "").trim()}</span>
           </div>`,
           iconSize: [120, 32],
@@ -200,11 +202,25 @@ export default function NearestHospitals() {
   }, [userLocation, selectedCity, selectedDistrict]);
 
   useEffect(() => {
-    if (navigator.geolocation) {
+    const cached = getCachedUserLocation();
+    if (cached) {
+      setUserLocation({ latitude: cached.latitude, longitude: cached.longitude });
+      const { city: detectedCity, district: detectedDistrict } = findNearestCityAndDistrict(cached.latitude, cached.longitude);
+      setSelectedCity(detectedCity);
+      const dists = getLocalDistricts(detectedCity);
+      setDistrictList(dists);
+      setSelectedDistrict(detectedDistrict);
+    } else if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const loc = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
           setUserLocation(loc);
+          requestAndCacheUserLocation();
+          const { city: detectedCity, district: detectedDistrict } = findNearestCityAndDistrict(loc.latitude, loc.longitude);
+          setSelectedCity(detectedCity);
+          const dists = getLocalDistricts(detectedCity);
+          setDistrictList(dists);
+          setSelectedDistrict(detectedDistrict);
         },
         () => {},
         { timeout: 8000 }
@@ -474,9 +490,14 @@ export default function NearestHospitals() {
                       </div>
 
                       {/* Başlık */}
-                      <h3 className="text-base font-black text-gray-900 leading-snug">
-                        {fac.name}
-                      </h3>
+                      <div className="flex items-start gap-2">
+                        <span className="shrink-0 text-xs font-black font-mono bg-red-100 text-red-800 px-2 py-0.5 rounded-md mt-0.5">
+                          #{fIdx + 1}
+                        </span>
+                        <h3 className="text-base font-black text-gray-900 leading-snug">
+                          {fac.name}
+                        </h3>
+                      </div>
                       <p className="text-xs font-semibold text-gray-500 mt-0.5">
                         {fac.district} · {fac.city}
                       </p>

@@ -16,6 +16,9 @@ import {
   Building2,
   Phone,
   Radio,
+  Syringe,
+  ShieldAlert,
+  FileText,
 } from "lucide-react";
 import { QuotaBadge } from "./QuotaBadge";
 import { useQuota } from "@/hooks/useQuota";
@@ -174,41 +177,53 @@ export default function SiteLayout({ children }: SiteLayoutProps) {
 
         {/* Mobil Menü Top Drawer */}
         {mobileOpen && (
-          <nav id="mobile-navigation" className="mobile-nav p-4 space-y-2 bg-white border-b border-gray-200" aria-label="Mobil navigasyon">
-            <Link href="/" className="mobile-nav-link flex items-center justify-between font-black text-red-600">
+          <nav id="mobile-navigation" className="mobile-nav p-4 space-y-2.5 bg-white border-b border-gray-200 max-h-[80vh] overflow-y-auto" aria-label="Mobil navigasyon">
+            <Link href="/" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center justify-between font-black text-red-600">
               <span className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
                 Nöbetçi Eczaneler
               </span>
               <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-extrabold">CANLI</span>
             </Link>
-            <Link href="/en-yakin-hastane" className="mobile-nav-link flex items-center justify-between font-black text-red-700">
+            <Link href="/en-yakin-hastane" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center justify-between font-black text-red-700">
               <span className="flex items-center gap-2">
                 <HeartPulse size={16} />
                 En Yakın Hastane & ASM
               </span>
               <span className="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded font-extrabold">7/24 ACİL</span>
             </Link>
-            <Link href="/saglik-araclari" className="mobile-nav-link flex items-center justify-between font-black text-emerald-700">
+            <Link href="/saglik-araclari" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center justify-between font-black text-emerald-700">
               <span className="flex items-center gap-2">
                 <Activity size={16} />
                 Sağlık Portalı & SGK Araçları
               </span>
               <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded font-extrabold">YENİ</span>
             </Link>
-            <Link href="/turkiyede-saglik" className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800">
-              <Globe2 size={16} className="text-cyan-700" />
-              Türkiye'de Sağlık (WHO & UNICEF)
+            <Link href="/saglik-araclari" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800">
+              <Syringe size={16} className="text-blue-600" />
+              Kan Bağışı & İlk Yardım Merkezleri
             </Link>
-            <Link href="/tum-eczaneler" className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800">
+            <Link href="/saglik-araclari" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800">
+              <ShieldAlert size={16} className="text-amber-600" />
+              TİTCK İlaç Geri Çekme & Uyarılar
+            </Link>
+            <Link href="/turkiyede-saglik" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800">
+              <Globe2 size={16} className="text-cyan-700" />
+              Türkiye'de Sağlık İstatistikleri
+            </Link>
+            <Link href="/tum-eczaneler" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800">
               <Building2 size={16} className="text-gray-600" />
               Tüm Eczaneler & Hızlı Arama
             </Link>
-            <Link href="/blog" className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800">
+            <Link href="/blog" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800">
               <Pill size={16} className="text-amber-600" />
               İlaç Fiyatları & Sağlık Rehberi
             </Link>
-            <Link href="/reklam-ver" className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800">
+            <Link href="/veri-kaynaklari" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800">
+              <FileText size={16} className="text-indigo-600" />
+              Resmi Veri Kaynakları (TİTCK & AFAD)
+            </Link>
+            <Link href="/reklam-ver" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800">
               <Phone size={16} className="text-gray-600" />
               Reklam & İletişim
             </Link>
