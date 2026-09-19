@@ -1046,76 +1046,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* How it works */}
-      <section className="how-section" id="nasil-calisir">
-        <div className="container">
-          <SectionHeading
-            eyebrow="ÜÇ ADIMDA"
-            title="İhtiyacınız olan eczaneyi bulun"
-            description="Karmaşık menüler yok. Konumunuzu paylaşın veya şehir seçin, açık eczaneyi görün ve yola çıkın."
-          />
-          <div className="steps-grid">
-            <div className="step-card">
-              <span className="step-number">01</span>
-              <span className="step-icon">
-                <MapPin size={26} />
-              </span>
-              <h3>Şehir ve İlçe Seçin</h3>
-              <p>Konum izni verildiğinde bölgeniz otomatik seçilir. İsterseniz il ve ilçe seçebilirsiniz.</p>
-            </div>
-            <div className="step-card">
-              <span className="step-number">02</span>
-              <span className="step-icon">
-                <Cross size={26} />
-              </span>
-              <h3>Nöbetçi Eczaneleri Görün</h3>
-              <p>Sabah 09:00'a kadar kesintisiz açık eczanelerin güncel adres ve telefonlarını inceleyin.</p>
-            </div>
-            <div className="step-card">
-              <span className="step-number">03</span>
-              <span className="step-icon">
-                <Navigation size={26} />
-              </span>
-              <h3>Tek Tıkla Yol Tarifi</h3>
-              <p>Telefon edin veya doğrudan Google Haritalar ile yol tarifini anında başlatın.</p>
-            </div>
-          </div>
-        </div>
-      </section>
 
-      {/* Update info section */}
-      <section className="update-section">
-        <div className="container update-box">
-          <div className="update-icon">
-            <Clock3 size={26} />
-          </div>
-          <div>
-            <p className="eyebrow">VERİ VE KOTA GÜVENLİĞİ</p>
-            <h2>Nöbetçi listelerinin güncelliğini kontrol edin.</h2>
-            <p>
-              Kaynak ve tarih bilgisi sonuçların yanında gösterilir. Veri alınamadığında örnek eczane kaydı
-              gösterilmez. Gitmeden önce eczaneyi arayarak nöbet durumunu teyit edin.
-            </p>
-          </div>
-          <Link href="/veri-kaynaklari" className="button button-quiet">
-            Veri ve Kota Detayları <ArrowRight size={19} />
-          </Link>
-        </div>
-      </section>
 
-      {/* Closing section */}
-      <section className="closing-section">
-        <div className="container closing-inner">
-          <div>
-            <p className="eyebrow">GÜVENİLİR VE SADE</p>
-            <h2>Mahallenizdeki güvenilir eczanenin dijital hali.</h2>
-          </div>
-          <p>Nöbetçi Eczanem, ihtiyaç anında doğru bilgiye en kısa yoldan ulaşmanız için tasarlandı.</p>
-          <div className="closing-mark">
-            <Sparkles size={20} /> Her gün 81 ilde yanınızda
-          </div>
-        </div>
-      </section>
     </main>
   );
 }
