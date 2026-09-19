@@ -391,3 +391,42 @@ export function generateCityPharmacies(
 
   return list;
 }
+
+export function findNearestCityAndDistrict(
+  lat: number,
+  lng: number
+): { city: string; district: string } {
+  let closestCitySlug = "istanbul";
+  let minCityDist = Infinity;
+
+  for (const [slug, coords] of Object.entries(TURKEY_CITY_COORDINATES)) {
+    const d = calculateDistanceKm(lat, lng, coords.lat, coords.lng);
+    if (d < minCityDist) {
+      minCityDist = d;
+      closestCitySlug = slug;
+    }
+  }
+
+  const cityListArray = Array.isArray(citiesDataJson) ? citiesDataJson : (citiesDataJson as any)?.data || [];
+  const matchedCityObj = cityListArray.find((c: any) => toTurkishSlug(c.name) === closestCitySlug);
+  const cityName = matchedCityObj ? matchedCityObj.name : "İstanbul";
+
+  let closestDistrict = "Tümü";
+  let minDistrictDist = Infinity;
+
+  const districtCoordsMap = TURKEY_DISTRICT_COORDINATES[closestCitySlug];
+  if (districtCoordsMap) {
+    for (const [dSlug, dCoords] of Object.entries(districtCoordsMap)) {
+      const d = calculateDistanceKm(lat, lng, dCoords.lat, dCoords.lng);
+      if (d < minDistrictDist) {
+        minDistrictDist = d;
+        const cityDistList = TURKEY_DISTRICTS[cityName] || [];
+        const realDistName = cityDistList.find((dist: string) => toTurkishSlug(dist) === dSlug);
+        closestDistrict = realDistName || dSlug.toUpperCase();
+      }
+    }
+  }
+
+  return { city: cityName, district: closestDistrict };
+}
+

@@ -29,7 +29,7 @@ import { AdRail, MobileAd, SectionHeading } from "@/components/SiteLayout";
 import { RealLeafletMap } from "@/components/RealLeafletMap";
 import { useQuota } from "@/hooks/useQuota";
 import { toTurkishSlug } from "@shared/turkeyDistricts";
-import { formatDistance, calculateDistanceKm, TURKEY_CITY_COORDINATES, TURKEY_DISTRICT_COORDINATES } from "@/lib/turkeyGeoData";
+import { formatDistance, calculateDistanceKm, findNearestCityAndDistrict, TURKEY_CITY_COORDINATES, TURKEY_DISTRICT_COORDINATES } from "@/lib/turkeyGeoData";
 import {
   getLocalCities,
   getLocalDistricts,
@@ -480,23 +480,7 @@ export default function Home() {
 
   const { updateQuota } = useQuota();
 
-  // Try silent GPS retrieval on mount if permission already granted
-  useEffect(() => {
-    if (navigator.geolocation && navigator.permissions) {
-      navigator.permissions.query({ name: "geolocation" as any }).then((result) => {
-        if (result.state === "granted") {
-          navigator.geolocation.getCurrentPosition((pos) => {
-            setUserLocation({
-              latitude: pos.coords.latitude,
-              longitude: pos.coords.longitude,
-            });
-          });
-        }
-      }).catch(() => {});
-    }
-  }, []);
-
-  // District list automatically syncs when city changes (instant, 0 network, no <!DOCTYPE error)
+  // District list automatically syncs when city changes
   const handleCityChange = (newCity: string) => {
     setCity(newCity);
     const newDistricts = getLocalDistricts(newCity);
@@ -541,46 +525,18 @@ export default function Home() {
         setSelectedPharmacy(0);
       } else {
         setDaysData([]);
-        toast.error("Nöbetçi eczane bulunamadı.");
       }
     } catch (err: any) {
-      toast.error(err?.message || "Eczaneler yüklenirken hata oluştu.");
+      // Quiet fallback
     } finally {
       setLoading(false);
     }
   };
 
-  // Initial fetch on mount
-  useEffect(() => {
-    fetchPharmacies("İstanbul", "Tümü");
-  }, []);
-
-  // Request GPS and calculate distances
-  const requestLocationAndCalculate = () => {
-    if (!navigator.geolocation) {
-      toast.error("Tarayıcınız konum servisini desteklemiyor.");
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const loc = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
-        setUserLocation(loc);
-        toast.success("Konumunuz tespit edildi, mesafeler güncellendi.");
-        fetchPharmacies(city, district, loc);
-      },
-      () => {
-        toast.error("Konum izni alınamadı. Tarayıcı ayarlarından konumu açabilirsiniz.");
-      },
-      { timeout: 8000 }
-    );
-  };
-
-  // GPS Nearby with automatic multi-source fallback
+  // GPS Nearby with automatic city/district state sync
   const findNearby = () => {
     if (!navigator.geolocation) {
-      setLocationNote("Tarayıcınız konum paylaşımını desteklemiyor. Şehir ve ilçe seçebilirsiniz.");
-      toast.error("Konum bilgisi desteklenmiyor");
+      setLocationNote("Tarayıcınız konum paylaşımını desteklemiyor.");
       return;
     }
 
@@ -592,7 +548,15 @@ export default function Home() {
         const { latitude, longitude } = pos.coords;
         const loc = { latitude, longitude };
         setUserLocation(loc);
-        setLocationNote(`Konumunuz tespit edildi (${latitude.toFixed(3)}, ${longitude.toFixed(3)}). En yakın nöbetçiler getiriliyor.`);
+
+        // Reverse-geocoding via local coordinate map
+        const { city: detectedCity, district: detectedDistrict } = findNearestCityAndDistrict(latitude, longitude);
+        setCity(detectedCity);
+        const newDists = getLocalDistricts(detectedCity);
+        setDistrictList(newDists);
+        setDistrict(detectedDistrict);
+
+        setLocationNote(`Konumunuz tespit edildi (${detectedCity} · ${detectedDistrict}). En yakın nöbetçiler sıralandı.`);
 
         try {
           const result = await fetchNearbyPharmaciesAuto(latitude, longitude);
@@ -602,14 +566,11 @@ export default function Home() {
             setLastWasCache(result.wasCacheHit);
             setSelectedDayIndex(0);
             setSelectedPharmacy(0);
-            const count = result.days[0]?.pharmacies?.length || 0;
-            toast.success(`${count} adet nöbetçi eczane mesafelerine göre sıralandı!`);
-            document.getElementById("sonuclar")?.scrollIntoView({ behavior: "smooth", block: "start" });
           } else {
-            toast.error("Yakınınızda eczane bulunamadı");
+            fetchPharmacies(detectedCity, detectedDistrict, loc);
           }
         } catch (err) {
-          toast.error("Konum bazlı eczaneler getirilemedi.");
+          fetchPharmacies(detectedCity, detectedDistrict, loc);
         } finally {
           setLoading(false);
         }
@@ -617,11 +578,38 @@ export default function Home() {
       (err) => {
         setLoading(false);
         setLocationNote("Konum izni verilmedi. Şehir ve ilçe seçerek listeleyebilirsiniz.");
-        toast.error("Konum izni alınamadı.");
       },
       { timeout: 10000 }
     );
   };
+
+  // Initial fetch & Auto GPS on mount
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const { latitude, longitude } = pos.coords;
+          const loc = { latitude, longitude };
+          setUserLocation(loc);
+
+          const { city: detectedCity, district: detectedDistrict } = findNearestCityAndDistrict(latitude, longitude);
+          setCity(detectedCity);
+          const newDists = getLocalDistricts(detectedCity);
+          setDistrictList(newDists);
+          setDistrict(detectedDistrict);
+
+          setLocationNote(`Konumunuz tespit edildi (${detectedCity} · ${detectedDistrict}). En yakın nöbetçiler sıralandı.`);
+          fetchPharmacies(detectedCity, detectedDistrict, loc);
+        },
+        () => {
+          fetchPharmacies("İstanbul", "Tümü");
+        },
+        { timeout: 6000 }
+      );
+    } else {
+      fetchPharmacies("İstanbul", "Tümü");
+    }
+  }, []);
 
   // Current active day's pharmacies
   const activeDayGroup = daysData[selectedDayIndex] || daysData[0];
@@ -652,8 +640,8 @@ export default function Home() {
               <span>Yakınımdaki Eczaneleri Bul (GPS)</span>
             </button>
 
-            {/* Otomatik Canlı Harita - Kenarlara Tam Oturan Sade Görünüm */}
-            <div className="-mx-2 sm:mx-0 w-[calc(100%+1rem)] sm:w-full my-4 rounded-xl sm:rounded-2xl overflow-hidden border border-gray-200 shadow-md bg-white">
+            {/* Otomatik Canlı Harita - Düzgün ve Tam Oturan Görünüm */}
+            <div className="w-full my-4 rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white relative z-0">
               <RealLeafletMap
                 pharmacies={activePharmacies}
                 selectedPharmacy={selectedPharmacy}
@@ -765,97 +753,6 @@ export default function Home() {
       <section className="results-section" id="sonuclar">
         <div className="container">
 
-          {/* İstanbul Özel Lezzet Molası: İtalyan Pizza Reklam Alanı */}
-          {(city === "İstanbul" || (userLocation && userLocation.latitude > 40.8 && userLocation.latitude < 41.3 && userLocation.longitude > 28.5 && userLocation.longitude < 29.5)) && (
-            <div className="mb-8 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-950 via-stone-900 to-red-950 text-white border border-amber-800/60 shadow-lg space-y-3.5">
-              <div className="flex items-center justify-between gap-2 border-b border-amber-800/50 pb-2.5">
-                <div className="flex items-center gap-2">
-                  <span className="p-1 rounded-md bg-amber-500/20 text-amber-300 font-black text-[10px] uppercase border border-amber-500/30">
-                    İSTANBUL ÖZEL LEZZET MOLASI
-                  </span>
-                  <h3 className="text-xs sm:text-sm font-black text-amber-100">
-                    🍕 Gerçek İtalyan Napoletana Pizza Dükkanları
-                  </h3>
-                </div>
-                <span className="text-[10px] text-amber-300/80 font-bold">Sponsorlu</span>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                {/* 1. Forno di Roma */}
-                <div className="p-3.5 rounded-xl bg-stone-900/90 border border-stone-800 flex flex-col justify-between space-y-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-extrabold text-sm sm:text-base text-white">Forno di Roma</h4>
-                      <span className="text-[11px] font-bold text-amber-300 bg-amber-950/80 px-2 py-0.5 rounded border border-amber-800">
-                        {userLocation
-                          ? `📍 ${formatDistance(calculateDistanceKm(userLocation.latitude, userLocation.longitude, 40.9858, 29.0270))}`
-                          : "📍 Kadıköy / Moda"}
-                      </span>
-                    </div>
-                    <p className="text-xs text-stone-300">
-                      Odun ateşinde taş fırın İtalyan pizzası, taze hamur ve özel malzemeler.
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2 pt-1">
-                    <a
-                      href="https://www.google.com/maps/dir/?api=1&destination=40.9858,29.0270"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex-1 py-1.5 px-3 rounded-lg bg-red-600 hover:bg-red-700 text-white font-black text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs"
-                    >
-                      <Navigation className="w-3.5 h-3.5" /> Rota Çiz
-                    </a>
-                    <a
-                      href="https://www.instagram.com/fornodiromatr/"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="py-1.5 px-3 rounded-lg bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 text-white font-black text-xs flex items-center justify-center gap-1 transition-all shadow-xs"
-                    >
-                      Instagram
-                    </a>
-                  </div>
-                </div>
-
-                {/* 2. Gusto Napoletano Bakırköy */}
-                <div className="p-3.5 rounded-xl bg-stone-900/90 border border-stone-800 flex flex-col justify-between space-y-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-extrabold text-sm sm:text-base text-white">Gusto Napoletano</h4>
-                      <span className="text-[11px] font-bold text-amber-300 bg-amber-950/80 px-2 py-0.5 rounded border border-amber-800">
-                        {userLocation
-                          ? `📍 ${formatDistance(calculateDistanceKm(userLocation.latitude, userLocation.longitude, 40.9782, 28.8722))}`
-                          : "📍 Bakırköy / İncirli"}
-                      </span>
-                    </div>
-                    <p className="text-xs text-stone-300">
-                      Orijinal Napoli pizzası, özel fermante hamur ve taze İtalyan peynirleri.
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2 pt-1">
-                    <a
-                      href="https://www.google.com/maps/dir/?api=1&destination=40.9782,28.8722"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex-1 py-1.5 px-3 rounded-lg bg-red-600 hover:bg-red-700 text-white font-black text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs"
-                    >
-                      <Navigation className="w-3.5 h-3.5" /> Rota Çiz
-                    </a>
-                    <a
-                      href="https://www.instagram.com/gustonapoletano.bakirkoy/"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="py-1.5 px-3 rounded-lg bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 text-white font-black text-xs flex items-center justify-center gap-1 transition-all shadow-xs"
-                    >
-                      Instagram
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Results Header with Day Tabs on Top Right */}
           <div className="results-heading flex flex-col md:flex-row md:items-end justify-between gap-4 pb-2">
             <div>
@@ -873,8 +770,8 @@ export default function Home() {
               </h2>
             </div>
 
-            {/* Dün / Bugün / Yarın Buttons placed directly at top-right of the list */}
-            <div className="flex items-center gap-1.5 p-1 bg-gray-100/90 rounded-2xl border border-gray-200 self-start md:self-auto shadow-2xs">
+            {/* Dün / Bugün / Yarın Buttons - Mobil Uyumlu Kayan/Esnek Yapı */}
+            <div className="w-full sm:w-auto overflow-x-auto no-scrollbar flex items-center justify-between gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200 shadow-2xs">
               {daysData.map((dGroup, idx) => {
                 const isSelected = selectedDayIndex === idx;
                 return (
@@ -885,7 +782,7 @@ export default function Home() {
                       setSelectedDayIndex(idx);
                       setSelectedPharmacy(0);
                     }}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                    className={`flex-1 sm:flex-initial py-2 px-2.5 sm:px-3.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
                       isSelected
                         ? "bg-red-600 text-white shadow-xs"
                         : "text-gray-700 hover:text-gray-950 hover:bg-white/80"

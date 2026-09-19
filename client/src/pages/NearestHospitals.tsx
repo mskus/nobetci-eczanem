@@ -199,6 +199,19 @@ export default function NearestHospitals() {
     return { latitude: cCoords.lat, longitude: cCoords.lng };
   }, [userLocation, selectedCity, selectedDistrict]);
 
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const loc = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+          setUserLocation(loc);
+        },
+        () => {},
+        { timeout: 8000 }
+      );
+    }
+  }, []);
+
   const handleCityChange = (newCity: string) => {
     setSelectedCity(newCity);
     const dists = getLocalDistricts(newCity);
@@ -207,10 +220,7 @@ export default function NearestHospitals() {
   };
 
   const findNearby = () => {
-    if (!navigator.geolocation) {
-      toast.error("Tarayıcınız konum servisini desteklemiyor.");
-      return;
-    }
+    if (!navigator.geolocation) return;
 
     setLoading(true);
     navigator.geolocation.getCurrentPosition(
@@ -218,11 +228,9 @@ export default function NearestHospitals() {
         const loc = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
         setUserLocation(loc);
         setLoading(false);
-        toast.success("GPS Konumunuz alındı! En yakın sağlık kuruluşları sıralandı.");
       },
       (err) => {
         setLoading(false);
-        toast.error("Konum izni alınamadı. Şehir ve ilçe seçerek listeleyebilirsiniz.");
       },
       { timeout: 8000 }
     );
@@ -247,8 +255,8 @@ export default function NearestHospitals() {
   return (
     <main className="pb-16 bg-gray-50/50 min-h-screen">
       
-      {/* 7/24 Acil Çağrı Üst Bandı */}
-      <section className="bg-gradient-to-r from-red-600 via-red-700 to-rose-700 text-white py-3 px-4 shadow-md sticky top-16 z-20">
+      {/* 7/24 Acil Çağrı Üst Bandı — Statik ve Sayfa Akışına Uygun */}
+      <section className="bg-gradient-to-r from-red-600 via-red-700 to-rose-700 text-white py-3 px-4 shadow-sm border-b border-red-800">
         <div className="container max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-yellow-300 animate-ping" />

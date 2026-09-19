@@ -47,7 +47,7 @@ export default function SiteLayout({ children }: SiteLayoutProps) {
 
   return (
     <div className="site-shell">
-      <header className="site-header">
+      <header className="site-header relative z-40">
         <div className="header-inner">
           <Brand />
           
@@ -68,23 +68,7 @@ export default function SiteLayout({ children }: SiteLayoutProps) {
               </span>
             </Link>
 
-            {/* 2. Deprem Takibi (AFAD) */}
-            <Link
-              href="/deprem"
-              className={`relative px-3 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-1.5 ${
-                location === "/deprem" || location === "/deprem-takibi"
-                  ? "bg-slate-900 text-white shadow-xs"
-                  : "text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-300"
-              }`}
-            >
-              <Radio size={15} className="text-red-600 animate-pulse shrink-0" />
-              <span>Son Depremler</span>
-              <span className="text-[10px] bg-red-600 text-white font-extrabold px-1.5 py-0.2 rounded shadow-2xs">
-                AFAD
-              </span>
-            </Link>
-
-            {/* 3. En Yakın Hastane — Acil Kırmızı Efektli */}
+            {/* 2. En Yakın Hastane — Acil Kırmızı Efektli */}
             <Link
               href="/en-yakin-hastane"
               className={`relative px-3 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-1.5 ${
@@ -198,13 +182,6 @@ export default function SiteLayout({ children }: SiteLayoutProps) {
               </span>
               <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-extrabold">CANLI</span>
             </Link>
-            <Link href="/deprem" className="mobile-nav-link flex items-center justify-between font-black text-slate-900">
-              <span className="flex items-center gap-2">
-                <Radio size={16} className="text-red-600 animate-pulse" />
-                AFAD Son Depremler
-              </span>
-              <span className="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded font-extrabold">AFAD</span>
-            </Link>
             <Link href="/en-yakin-hastane" className="mobile-nav-link flex items-center justify-between font-black text-red-700">
               <span className="flex items-center gap-2">
                 <HeartPulse size={16} />
@@ -256,16 +233,6 @@ export default function SiteLayout({ children }: SiteLayoutProps) {
             <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
           </div>
           <span className="text-[10px] tracking-tight">Eczaneler</span>
-        </Link>
-
-        <Link
-          href="/deprem"
-          className={`flex flex-col items-center justify-center gap-0.5 py-1 px-2.5 rounded-xl transition-all ${
-            location === "/deprem" || location === "/deprem-takibi" ? "text-red-600 font-black" : "text-slate-500 font-bold hover:text-slate-900"
-          }`}
-        >
-          <Radio className="w-5 h-5 text-red-600 animate-pulse" />
-          <span className="text-[10px] tracking-tight">Deprem</span>
         </Link>
 
         <Link
