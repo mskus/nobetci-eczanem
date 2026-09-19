@@ -53,7 +53,6 @@ export default function SiteLayout({ children }: SiteLayoutProps) {
             ))}
           </nav>
           <div className="header-actions flex items-center gap-2">
-            <QuotaBadge quota={quota} />
             <button
               type="button"
               className="mobile-menu-button"

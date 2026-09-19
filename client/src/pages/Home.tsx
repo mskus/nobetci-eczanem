@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AdRail, MobileAd, SectionHeading } from "@/components/SiteLayout";
+import { RealLeafletMap } from "@/components/RealLeafletMap";
 import { useQuota } from "@/hooks/useQuota";
 import { toTurkishSlug } from "@shared/turkeyDistricts";
 
@@ -783,30 +784,6 @@ export default function Home() {
                   ))}
                 </div>
               )}
-
-              {/* Cache status badge */}
-              {lastWasCache !== undefined && (
-                <div
-                  className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-bold border ${
-                    lastWasCache
-                      ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                      : "bg-amber-50 text-amber-800 border-amber-200"
-                  }`}
-                  title="Sorgu kaynağı ve kota durumu"
-                >
-                  {lastWasCache ? (
-                    <>
-                      <Zap size={14} className="text-amber-500 fill-amber-500" />
-                      Önbellekten (0 Kota Harcandı)
-                    </>
-                  ) : (
-                    <>
-                      <Activity size={14} className="text-amber-600" />
-                      Canlı Sorgu (1 Kota)
-                    </>
-                  )}
-                </div>
-              )}
             </div>
           </div>
 
@@ -837,9 +814,9 @@ export default function Home() {
             </div>
           ) : (
             <div className="results-layout">
-              <MapPreview
+              <RealLeafletMap
                 pharmacies={activePharmacies}
-                activePharmacy={selectedPharmacy}
+                selectedPharmacy={selectedPharmacy}
                 onSelect={(idx) => setSelectedPharmacy(idx)}
                 areaTitle={`${city} ${district !== "Tümü" ? district : ""}`}
               />
