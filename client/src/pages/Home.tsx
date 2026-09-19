@@ -1,237 +1,741 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
-import { ArrowRight, Check, Clock3, Cross, MapPin, Navigation, Phone, ShieldCheck, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  Clock3,
+  Cross,
+  MapPin,
+  Navigation,
+  Phone,
+  ShieldCheck,
+  Sparkles,
+  Zap,
+  Activity,
+  AlertTriangle,
+  Loader2,
+  Calendar,
+  Layers,
+} from "lucide-react";
 import { toast } from "sonner";
 import { AdRail, MobileAd, SectionHeading } from "@/components/SiteLayout";
+import { useQuota } from "@/hooks/useQuota";
+import { toTurkishSlug } from "@shared/turkeyDistricts";
 
-type Pharmacy = {
+export interface PharmacyLocation {
+  latitude: number | null;
+  longitude: number | null;
+}
+
+export interface PharmacyDataQuality {
+  status: "passed" | "rejected" | string;
+  code: string | null;
+  checks?: string[];
+  addressVerified?: boolean;
+}
+
+export interface RawPharmacy {
+  id: string;
   name: string;
-  area: string;
-  distance: string;
-  address: string;
+  address: string | null;
   phone: string;
-  openUntil: string;
-  x: string;
-  y: string;
-};
+  phone2?: string | null;
+  location?: PharmacyLocation;
+  city?: { name: string; slug: string };
+  district?: { name: string; slug: string };
+  duty?: { date: string; isVerified: boolean };
+  dataQuality?: PharmacyDataQuality;
+  distance?: number;
+}
 
-const pharmacies: Pharmacy[] = [
-  {
-    name: "Merkez Eczanesi",
-    area: "Çankaya / Ankara",
-    distance: "0,8 km",
-    address: "Kızılay Mah. Atatürk Bulvarı No: 42",
-    phone: "0312 418 22 11",
-    openUntil: "Yarın 08:30",
-    x: "46%",
-    y: "42%",
-  },
-  {
-    name: "Güven Eczanesi",
-    area: "Bahçelievler / Ankara",
-    distance: "1,6 km",
-    address: "Aşkabat Cad. No: 18/B",
-    phone: "0312 215 09 34",
-    openUntil: "Yarın 09:00",
-    x: "62%",
-    y: "60%",
-  },
-  {
-    name: "Umut Eczanesi",
-    area: "Dikmen / Ankara",
-    distance: "2,4 km",
-    address: "Dikmen Cad. No: 77/A",
-    phone: "0312 482 73 20",
-    openUntil: "Yarın 08:30",
-    x: "30%",
-    y: "66%",
-  },
-];
+export interface DayDutyGroup {
+  day?: string; // "Dün", "Bugün", "Yarın"
+  date: string;
+  count: number;
+  pharmacies: RawPharmacy[];
+}
 
-const cities = ["Ankara", "İstanbul", "Bursa", "İzmir", "Antalya"];
-const districts: Record<string, string[]> = {
-  Ankara: ["Çankaya", "Bahçelievler", "Dikmen", "Keçiören"],
-  İstanbul: ["Kadıköy", "Beşiktaş", "Üsküdar", "Bakırköy"],
-  Bursa: ["Osmangazi", "Nilüfer", "Yıldırım"],
-  İzmir: ["Konak", "Bornova", "Karşıyaka"],
-  Antalya: ["Muratpaşa", "Konyaaltı", "Kepez"],
-};
+function MapPreview({
+  pharmacies,
+  activePharmacy,
+  onSelect,
+  areaTitle,
+}: {
+  pharmacies: RawPharmacy[];
+  activePharmacy: number;
+  onSelect: (index: number) => void;
+  areaTitle: string;
+}) {
+  // Compute normalized coordinates for SVG / Canvas map markers
+  const markers = useMemo(() => {
+    const valid = pharmacies.filter(
+      (p) => p.location && p.location.latitude && p.location.longitude
+    );
 
-function MapPreview({ activePharmacy }: { activePharmacy: number }) {
+    if (valid.length === 0) {
+      return pharmacies.map((p, i) => ({
+        pharmacy: p,
+        index: i,
+        x: `${30 + ((i * 18) % 50)}%`,
+        y: `${35 + ((i * 22) % 45)}%`,
+      }));
+    }
+
+    const lats = valid.map((p) => p.location!.latitude!);
+    const lngs = valid.map((p) => p.location!.longitude!);
+    const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs);
+    const maxLng = Math.max(...lngs);
+
+    const latSpan = maxLat - minLat || 0.01;
+    const lngSpan = maxLng - minLng || 0.01;
+
+    return pharmacies.map((p, i) => {
+      if (p.location?.latitude && p.location?.longitude) {
+        // Latitude increases northward (inverted for top %: higher lat = lower top %)
+        const normY = 15 + (1 - (p.location.latitude - minLat) / latSpan) * 70;
+        const normX = 15 + ((p.location.longitude - minLng) / lngSpan) * 70;
+        return {
+          pharmacy: p,
+          index: i,
+          x: `${Math.max(8, Math.min(92, normX))}%`,
+          y: `${Math.max(12, Math.min(88, normY))}%`,
+        };
+      }
+      return {
+        pharmacy: p,
+        index: i,
+        x: `${40 + ((i * 12) % 35)}%`,
+        y: `${45 + ((i * 15) % 35)}%`,
+      };
+    });
+  }, [pharmacies]);
+
+  const activePharm = pharmacies[activePharmacy];
+
   return (
-    <div className="map-preview" aria-label="Ankara merkez nöbetçi eczane haritası">
+    <div className="map-preview" aria-label="Nöbetçi eczane harita görünümü">
       <div className="map-topbar">
-        <span className="map-title"><MapPin size={18} /> Ankara merkez</span>
-        <span className="map-status"><span className="status-dot" /> 3 sonuç</span>
+        <span className="map-title">
+          <MapPin size={18} /> {areaTitle}
+        </span>
+        <span className="map-status">
+          <span className="status-dot" /> {pharmacies.length} nöbetçi
+        </span>
       </div>
-      <div className="map-canvas">
+      <div className="map-canvas relative overflow-hidden">
         <div className="map-grid" aria-hidden="true" />
         <div className="map-river" aria-hidden="true" />
-        <div className="map-district district-one">Kızılay</div>
-        <div className="map-district district-two">Bahçelievler</div>
-        <div className="map-district district-three">Dikmen</div>
-        <div className="map-road road-one" aria-hidden="true" />
-        <div className="map-road road-two" aria-hidden="true" />
-        <div className="map-road road-three" aria-hidden="true" />
-        <div className="user-location" aria-label="Konumunuz"><span /></div>
-        {pharmacies.map((pharmacy, index) => (
-          <div
-            key={pharmacy.name}
-            className={`map-marker ${index === activePharmacy ? "selected" : ""}`}
-            style={{ left: pharmacy.x, top: pharmacy.y }}
-            aria-label={pharmacy.name}
-          >
-            <Cross size={18} strokeWidth={3} />
+
+        {markers.map(({ pharmacy, index, x, y }) => {
+          const isSelected = index === activePharmacy;
+          return (
+            <div
+              key={pharmacy.id || pharmacy.name + index}
+              className={`map-marker cursor-pointer transition-transform hover:scale-125 ${
+                isSelected ? "selected shadow-lg z-20 scale-110" : "z-10"
+              }`}
+              style={{ left: x, top: y }}
+              onClick={() => onSelect(index)}
+              title={`${pharmacy.name} (${pharmacy.district?.name || ""})`}
+            >
+              <Cross size={18} strokeWidth={3} />
+            </div>
+          );
+        })}
+
+        {/* Selected pharmacy popup overlay on map */}
+        {activePharm && (
+          <div className="absolute bottom-12 left-3 right-3 sm:left-4 sm:right-auto sm:max-w-xs bg-white/95 backdrop-blur-xs p-3 rounded-xl shadow-lg border border-gray-200 z-30 animate-in fade-in slide-in-from-bottom-2">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-[11px] font-bold text-red-600 uppercase tracking-wider">Seçili Eczane</p>
+                <h4 className="text-sm font-extrabold text-gray-900 leading-tight">{activePharm.name}</h4>
+                <p className="text-xs text-gray-500 truncate">{activePharm.address || activePharm.district?.name || "Adres bilgisi teyit edilmeli"}</p>
+              </div>
+              <a
+                href={
+                  activePharm.location?.latitude && activePharm.location?.longitude
+                    ? `https://www.google.com/maps/dir/?api=1&destination=${activePharm.location.latitude},${activePharm.location.longitude}`
+                    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                        activePharm.name + " " + (activePharm.district?.name || "") + " " + (activePharm.city?.name || "")
+                      )}`
+                }
+                target="_blank"
+                rel="noreferrer"
+                className="p-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 shrink-0 shadow-xs"
+                title="Google Haritalar ile Yol Tarifi Al"
+              >
+                <Navigation size={14} />
+              </a>
+            </div>
           </div>
-        ))}
-        <div className="map-controls" aria-hidden="true">
-          <button type="button">+</button>
-          <button type="button">−</button>
+        )}
+
+        <div className="map-legend">
+          <span className="legend-marker">
+            <Cross size={12} strokeWidth={3} />
+          </span>{" "}
+          Canlı Nöbetçi
         </div>
-        <div className="map-legend"><span className="legend-marker"><Cross size={12} strokeWidth={3} /></span> Nöbetçi eczane</div>
       </div>
     </div>
   );
 }
 
-function PharmacyCard({ pharmacy, index, selected, onSelect }: { pharmacy: Pharmacy; index: number; selected: boolean; onSelect: () => void }) {
+function PharmacyCard({
+  pharmacy,
+  index,
+  selected,
+  onSelect,
+}: {
+  pharmacy: RawPharmacy;
+  index: number;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const isAddressRejected =
+    !pharmacy.address ||
+    pharmacy.dataQuality?.status === "rejected" ||
+    pharmacy.address.trim() === "";
+
+  const cleanPhone = pharmacy.phone.replace(/[^0-9+]/g, "");
+
+  const mapsUrl =
+    pharmacy.location?.latitude && pharmacy.location?.longitude
+      ? `https://www.google.com/maps/dir/?api=1&destination=${pharmacy.location.latitude},${pharmacy.location.longitude}`
+      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+          pharmacy.name +
+            " Eczanesi " +
+            (pharmacy.district?.name || "") +
+            " " +
+            (pharmacy.city?.name || "")
+        )}`;
+
   return (
-    <article className={`pharmacy-card ${selected ? "selected" : ""}`} onClick={onSelect}>
+    <article
+      className={`pharmacy-card transition-all ${
+        selected ? "selected ring-2 ring-red-500 shadow-md" : "hover:border-gray-300"
+      }`}
+      onClick={onSelect}
+    >
       <div className="pharmacy-card-top">
         <div>
-          <p className="pharmacy-kicker"><span className="live-dot" /> ŞU ANDA NÖBETÇİ</p>
-          <h3>{pharmacy.name}</h3>
-          <p className="pharmacy-area">{pharmacy.area}</p>
+          <p className="pharmacy-kicker">
+            <span className="live-dot" /> {pharmacy.duty?.isVerified ? "DOĞRULANMIŞ NÖBETÇİ" : "ŞU ANDA NÖBETÇİ"}
+          </p>
+          <h3 className="text-xl font-extrabold text-gray-900">{pharmacy.name}</h3>
+          <p className="pharmacy-area font-medium text-gray-600">
+            {pharmacy.district?.name ? `${pharmacy.district.name} · ` : ""}
+            {pharmacy.city?.name || ""}
+          </p>
         </div>
-        <span className="distance-badge">{pharmacy.distance}</span>
+        {pharmacy.distance !== undefined && (
+          <span className="distance-badge font-bold bg-red-50 text-red-700 border border-red-200">
+            {pharmacy.distance < 1
+              ? `${Math.round(pharmacy.distance * 1000)} m`
+              : `${pharmacy.distance.toFixed(1)} km`}
+          </span>
+        )}
       </div>
-      <div className="pharmacy-details">
-        <p><MapPin size={18} /> {pharmacy.address}</p>
-        <p><Clock3 size={18} /> Nöbet {pharmacy.openUntil} kadar sürüyor</p>
+
+      <div className="pharmacy-details space-y-2">
+        {isAddressRejected ? (
+          <div className="flex items-start gap-2 text-xs bg-amber-50 text-amber-900 p-2.5 rounded-lg border border-amber-200">
+            <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <strong>Adres teyit bekliyor:</strong> Resmi kaynak güvenlik sebebiyle adresi doğrulamamıştır. Lütfen
+              gitmeden önce eczaneyi telefonla arayınız.
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-gray-700">
+            <MapPin size={18} className="text-red-500 shrink-0 inline" /> {pharmacy.address}
+          </p>
+        )}
+        <p className="text-xs text-gray-500 font-medium">
+          <Clock3 size={16} className="inline text-gray-400 mr-1" /> Nöbet ertesi sabah 09:00'a kadar geçerlidir
+        </p>
       </div>
+
       <div className="pharmacy-actions">
-        <a className="button button-secondary" href={`tel:${pharmacy.phone.replaceAll(" ", "")}`} onClick={(event) => event.stopPropagation()}><Phone size={19} /> Telefon Et</a>
-        <a className="button button-quiet" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(pharmacy.address + " " + pharmacy.area)}`} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}><Navigation size={18} /> Yol Tarifi</a>
+        <a
+          className="button button-secondary flex items-center justify-center gap-2 font-bold"
+          href={`tel:${cleanPhone}`}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <Phone size={18} /> {pharmacy.phone || "Telefon Et"}
+        </a>
+        <a
+          className="button button-quiet flex items-center justify-center gap-2 font-semibold"
+          href={mapsUrl}
+          target="_blank"
+          rel="noreferrer"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <Navigation size={18} /> Yol Tarifi
+        </a>
       </div>
     </article>
   );
 }
 
 export default function Home() {
-  const [city, setCity] = useState("Ankara");
-  const [district, setDistrict] = useState("Çankaya");
+  const [cityList, setCityList] = useState<Array<{ name: string; slug: string }>>([]);
+  const [districtList, setDistrictList] = useState<string[]>([]);
+  const [city, setCity] = useState("İstanbul");
+  const [district, setDistrict] = useState("Tümü");
+  const [selectedDayIndex, setSelectedDayIndex] = useState(0);
+
+  const [loading, setLoading] = useState(false);
+  const [daysData, setDaysData] = useState<DayDutyGroup[]>([]);
   const [selectedPharmacy, setSelectedPharmacy] = useState(0);
   const [locationNote, setLocationNote] = useState("Konumunuz paylaşılmadan arama yapılmaz.");
+  const [lastWasCache, setLastWasCache] = useState<boolean | undefined>(undefined);
 
-  const filteredDistricts = useMemo(() => districts[city] ?? [], [city]);
+  const { updateQuota } = useQuota();
 
-  const handleCityChange = (value: string) => {
-    setCity(value);
-    const firstDistrict = districts[value]?.[0] ?? "";
-    setDistrict(firstDistrict);
+  // 1. Load 82 static cities (0 API quota cost)
+  useEffect(() => {
+    async function loadCities() {
+      try {
+        const res = await fetch("/api/cities");
+        const json = await res.json();
+        if (json.success && json.data) {
+          setCityList(json.data);
+        }
+      } catch (err) {
+        console.error("Cities load error:", err);
+      }
+    }
+    loadCities();
+  }, []);
+
+  // 2. Load districts whenever city changes (0 API quota cost)
+  useEffect(() => {
+    async function loadDistricts() {
+      const slug = toTurkishSlug(city);
+      try {
+        const res = await fetch(`/api/cities/${slug}/districts`);
+        const json = await res.json();
+        if (json.success && json.districts) {
+          setDistrictList(json.districts);
+        } else {
+          setDistrictList([]);
+        }
+      } catch (err) {
+        setDistrictList([]);
+      }
+    }
+    loadDistricts();
+    setDistrict("Tümü");
+  }, [city]);
+
+  // 3. Fetch pharmacies function
+  const fetchPharmacies = async (targetCity: string, targetDistrict?: string) => {
+    setLoading(true);
+    const citySlug = toTurkishSlug(targetCity);
+    const districtParam =
+      targetDistrict && targetDistrict !== "Tümü"
+        ? `&district=${encodeURIComponent(targetDistrict)}`
+        : "";
+
+    try {
+      const res = await fetch(`/api/pharmacies/on-duty?city=${citySlug}${districtParam}`);
+      const json = await res.json();
+
+      if (json.success && json.data) {
+        setDaysData(json.data.days || []);
+        setLastWasCache(json.wasCacheHit);
+
+        if (json.quota) {
+          updateQuota(json.quota);
+        }
+
+        // Set default day to "Bugün"
+        const todayIdx = (json.data.days || []).findIndex(
+          (d: DayDutyGroup) => d.day === "Bugün"
+        );
+        setSelectedDayIndex(todayIdx !== -1 ? todayIdx : 0);
+        setSelectedPharmacy(0);
+
+        if (json.wasCacheHit) {
+          toast.success("Akıllı önbellekten 0 kotayla yüklendi ⚡");
+        } else {
+          toast.success("Güncel nöbetçi eczaneler listelendi");
+        }
+      } else {
+        toast.error(json.error || "Eczane listesi alınamadı");
+      }
+    } catch (err) {
+      toast.error("Bağlantı hatası oluştu.");
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // Initial fetch for default city
+  useEffect(() => {
+    fetchPharmacies("İstanbul", "Tümü");
+  }, []);
+
+  const handleCityChange = (newCity: string) => {
+    setCity(newCity);
+    setDistrict("Tümü");
+    fetchPharmacies(newCity, "Tümü");
+  };
+
+  const handleDistrictChange = (newDistrict: string) => {
+    setDistrict(newDistrict);
+    fetchPharmacies(city, newDistrict);
+  };
+
+  // GPS Nearby
   const findNearby = () => {
     if (!navigator.geolocation) {
-      setLocationNote("Bu tarayıcı konum paylaşımını desteklemiyor. Şehir ve ilçe seçerek arayabilirsiniz.");
-      toast.error("Konum bilgisi alınamadı");
+      setLocationNote("Tarayıcınız konum paylaşımını desteklemiyor. Şehir ve ilçe seçebilirsiniz.");
+      toast.error("Konum bilgisi desteklenmiyor");
       return;
     }
-    setLocationNote("Konumunuz alındı. Size en yakın nöbetçi eczaneler gösteriliyor.");
-    toast.success("Yakınınızdaki nöbetçi eczaneler hazır");
-    document.getElementById("sonuclar")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    navigator.geolocation.getCurrentPosition(() => undefined, () => {
-      setLocationNote("Konum izni verilmedi. Ankara için örnek sonuçları gösteriyoruz.");
-    });
+
+    setLocationNote("Konumunuz alınıyor...");
+    setLoading(true);
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setLocationNote(`Konumunuz tespit edildi (${latitude.toFixed(3)}, ${longitude.toFixed(3)}). En yakın nöbetçiler getiriliyor.`);
+
+        try {
+          const res = await fetch(
+            `/api/pharmacies/nearby?latitude=${latitude}&longitude=${longitude}&radius=15`
+          );
+          const json = await res.json();
+
+          if (json.success && json.data) {
+            setLastWasCache(json.wasCacheHit);
+            if (json.quota) updateQuota(json.quota);
+
+            const pharmaciesList: RawPharmacy[] = json.data.pharmacies || [];
+            setDaysData([
+              {
+                day: "Yakınınızda Nöbetçi",
+                date: json.data.date || new Date().toISOString().split("T")[0],
+                count: pharmaciesList.length,
+                pharmacies: pharmaciesList,
+              },
+            ]);
+            setSelectedDayIndex(0);
+            setSelectedPharmacy(0);
+            toast.success(`${pharmaciesList.length} adet nöbetçi eczane bulundu!`);
+            document.getElementById("sonuclar")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          } else {
+            toast.error(json.error || "Yakınınızda eczane bulunamadı");
+          }
+        } catch (err) {
+          toast.error("Konum bazlı eczaneler getirilemedi.");
+        } finally {
+          setLoading(false);
+        }
+      },
+      (err) => {
+        setLoading(false);
+        setLocationNote("Konum izni verilmedi. Şehir ve ilçe seçerek listeleyebilirsiniz.");
+        toast.error("Konum izni alınamadı.");
+      },
+      { timeout: 10000 }
+    );
   };
 
-  const searchByArea = () => {
-    setLocationNote(`${city} / ${district} için nöbetçi eczaneler listeleniyor.`);
-    toast.success(`${district} için sonuçlar güncellendi`);
-    document.getElementById("sonuclar")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
+  // Current active day's pharmacies
+  const activeDayGroup = daysData[selectedDayIndex] || daysData[0];
+  const activePharmacies = activeDayGroup?.pharmacies || [];
 
   return (
     <main>
       <section className="hero-section">
         <AdRail side="left" />
         <div className="hero-content container">
-          <div className="hero-eyebrow"><span className="eyebrow-line" /> BUGÜN AÇIK ECZANELER <span className="eyebrow-line" /></div>
-          <h1>En Yakın <span>Nöbetçi Eczaneyi</span> Bul</h1>
-          <p className="hero-lead">Bulunduğunuz konuma göre açık nöbetçi eczaneleri kolayca bulun.</p>
+          <div className="hero-eyebrow">
+            <span className="eyebrow-line" /> BUGÜN AÇIK NÖBETÇİ ECZANELER <span className="eyebrow-line" />
+          </div>
+          <h1>
+            En Yakın <span>Nöbetçi Eczaneyi</span> Bul
+          </h1>
+          <p className="hero-lead">
+            Türkiye genelinde 81 il ve ilçelerde şu anda açık olan güncel nöbetçi eczaneler.
+          </p>
+
           <div className="search-panel">
-            <button type="button" className="button button-primary location-button" onClick={findNearby}>
-              <MapPin size={24} fill="currentColor" /> Yakınımdaki Eczaneleri Bul
+            <button
+              type="button"
+              className="button button-primary location-button"
+              onClick={findNearby}
+              disabled={loading}
+            >
+              {loading ? (
+                <Loader2 size={24} className="animate-spin" />
+              ) : (
+                <MapPin size={24} fill="currentColor" />
+              )}
+              Yakınımdaki Eczaneleri Bul (GPS)
             </button>
-            <div className="search-divider"><span>veya şehir ve ilçe seçin</span></div>
+
+            <div className="search-divider">
+              <span>veya 81 il ve ilçe seçin</span>
+            </div>
+
             <div className="select-row">
               <label>
                 <span>İl</span>
-                <select value={city} onChange={(event) => handleCityChange(event.target.value)} aria-label="İl seçin">
-                  {cities.map((item) => <option key={item} value={item}>{item}</option>)}
+                <select
+                  value={city}
+                  onChange={(e) => handleCityChange(e.target.value)}
+                  aria-label="İl seçin"
+                  disabled={loading}
+                >
+                  {cityList.length > 0 ? (
+                    cityList.map((item) => (
+                      <option key={item.slug} value={item.name}>
+                        {item.name}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="İstanbul">İstanbul</option>
+                  )}
                 </select>
               </label>
+
               <label>
                 <span>İlçe</span>
-                <select value={district} onChange={(event) => setDistrict(event.target.value)} aria-label="İlçe seçin">
-                  {filteredDistricts.map((item) => <option key={item} value={item}>{item}</option>)}
+                <select
+                  value={district}
+                  onChange={(e) => handleDistrictChange(e.target.value)}
+                  aria-label="İlçe seçin"
+                  disabled={loading}
+                >
+                  <option value="Tümü">Tüm İlçeler ({districtList.length})</option>
+                  {districtList.map((dist) => (
+                    <option key={dist} value={dist}>
+                      {dist}
+                    </option>
+                  ))}
                 </select>
               </label>
-              <button type="button" className="button button-outline search-button" onClick={searchByArea}>Eczaneleri Göster <ArrowRight size={20} /></button>
+
+              <button
+                type="button"
+                className="button button-outline search-button"
+                onClick={() => fetchPharmacies(city, district)}
+                disabled={loading}
+              >
+                {loading ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={20} />}
+                Eczaneleri Listele
+              </button>
             </div>
-            <p className="search-note"><ShieldCheck size={17} /> {locationNote}</p>
+
+            <p className="search-note">
+              <ShieldCheck size={17} /> {locationNote}
+            </p>
           </div>
-          <div className="hero-trust"><span><Check size={17} /> Güncel nöbet bilgileri</span><span><Check size={17} /> Ücretsiz kullanım</span><span><Check size={17} /> Reklamsız arama</span></div>
+
+          <div className="hero-trust">
+            <span>
+              <Check size={17} /> 81 İl ve Tüm İlçeler
+            </span>
+            <span>
+              <Check size={17} /> Canlı EczaneAPI Altyapısı
+            </span>
+            <span>
+              <Check size={17} /> Akıllı Kota Koruması
+            </span>
+          </div>
         </div>
         <AdRail side="right" />
       </section>
 
       <MobileAd />
 
+      {/* Results Section */}
       <section className="results-section" id="sonuclar">
         <div className="container">
-          <div className="results-heading">
+          {/* Results Header with Day Tabs & Cache Indicator */}
+          <div className="results-heading flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
-              <p className="eyebrow">ANKARA · ÇANKAYA</p>
-              <h2>Size en yakın nöbetçi eczaneler</h2>
+              <p className="eyebrow uppercase font-bold tracking-wider text-red-600">
+                {city} {district !== "Tümü" ? `· ${district}` : "· TÜM İLÇELER"}
+              </p>
+              <h2>Nöbetçi Eczaneler</h2>
             </div>
-            <p className="results-updated"><span className="status-dot" /> Son güncelleme: <strong>12:30</strong></p>
-          </div>
-          <div className="results-layout">
-            <MapPreview activePharmacy={selectedPharmacy} />
-            <div className="pharmacy-list">
-              {pharmacies.map((pharmacy, index) => (
-                <PharmacyCard key={pharmacy.name} pharmacy={pharmacy} index={index} selected={index === selectedPharmacy} onSelect={() => setSelectedPharmacy(index)} />
-              ))}
+
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Day selection tabs (Yesterday, Today, Tomorrow) from single API call */}
+              {daysData.length > 1 && (
+                <div className="inline-flex bg-gray-100 p-1 rounded-xl border border-gray-200">
+                  {daysData.map((dGroup, idx) => (
+                    <button
+                      key={dGroup.day || idx}
+                      type="button"
+                      onClick={() => {
+                        setSelectedDayIndex(idx);
+                        setSelectedPharmacy(0);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        selectedDayIndex === idx
+                          ? "bg-white text-gray-900 shadow-xs border border-gray-200"
+                          : "text-gray-600 hover:text-gray-900"
+                      }`}
+                    >
+                      {dGroup.day || dGroup.date} ({dGroup.count})
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Cache status badge */}
+              {lastWasCache !== undefined && (
+                <div
+                  className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-bold border ${
+                    lastWasCache
+                      ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                      : "bg-amber-50 text-amber-800 border-amber-200"
+                  }`}
+                  title="Sorgu kaynağı ve kota durumu"
+                >
+                  {lastWasCache ? (
+                    <>
+                      <Zap size={14} className="text-amber-500 fill-amber-500" />
+                      Önbellekten (0 Kota Harcandı)
+                    </>
+                  ) : (
+                    <>
+                      <Activity size={14} className="text-amber-600" />
+                      Canlı Sorgu (1 Kota)
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           </div>
+
+          {/* Results layout */}
+          {loading ? (
+            <div className="py-24 text-center space-y-4">
+              <Loader2 size={42} className="animate-spin text-red-600 mx-auto" />
+              <p className="text-base font-bold text-gray-700">Nöbetçi eczaneler alınıyor...</p>
+              <p className="text-xs text-gray-400">Akıllı önbellek kontrol ediliyor</p>
+            </div>
+          ) : activePharmacies.length === 0 ? (
+            <div className="py-16 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-300 p-8 space-y-3">
+              <Cross size={36} className="text-gray-400 mx-auto" />
+              <h3 className="text-lg font-bold text-gray-800">
+                Seçilen bölgede nöbetçi eczane bulunamadı
+              </h3>
+              <p className="text-sm text-gray-500 max-w-md mx-auto">
+                {city} {district !== "Tümü" ? district : ""} için nöbetçi kaydı henüz yayımlanmamış veya nöbet
+                listesi güncelleniyor olabilir.
+              </p>
+              <button
+                type="button"
+                onClick={() => handleDistrictChange("Tümü")}
+                className="button button-secondary text-xs inline-flex items-center gap-2 mt-2"
+              >
+                <Layers size={14} /> Tüm {city} İlçelerini Göster
+              </button>
+            </div>
+          ) : (
+            <div className="results-layout">
+              <MapPreview
+                pharmacies={activePharmacies}
+                activePharmacy={selectedPharmacy}
+                onSelect={(idx) => setSelectedPharmacy(idx)}
+                areaTitle={`${city} ${district !== "Tümü" ? district : ""}`}
+              />
+              <div className="pharmacy-list space-y-4">
+                {activePharmacies.map((pharmacy, index) => (
+                  <PharmacyCard
+                    key={pharmacy.id || pharmacy.name + index}
+                    pharmacy={pharmacy}
+                    index={index}
+                    selected={index === selectedPharmacy}
+                    onSelect={() => setSelectedPharmacy(index)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
+      {/* How it works */}
       <section className="how-section" id="nasil-calisir">
         <div className="container">
-          <SectionHeading eyebrow="ÜÇ ADIMDA" title="İhtiyacınız olan eczaneyi bulun" description="Karmaşık menüler yok. Konumunuzu paylaşın, açık eczaneyi görün ve yola çıkın." />
+          <SectionHeading
+            eyebrow="ÜÇ ADIMDA"
+            title="İhtiyacınız olan eczaneyi bulun"
+            description="Karmaşık menüler yok. Konumunuzu paylaşın veya şehir seçin, açık eczaneyi görün ve yola çıkın."
+          />
           <div className="steps-grid">
-            <div className="step-card"><span className="step-number">01</span><span className="step-icon"><MapPin size={26} /></span><h3>Konumunuzu paylaşın</h3><p>Size yakın eczaneleri görmek için konumunuzu kullanın veya şehir ve ilçe seçin.</p></div>
-            <div className="step-card"><span className="step-number">02</span><span className="step-icon"><Cross size={26} /></span><h3>Yakınınızdakileri görün</h3><p>Nöbetçi eczaneleri mesafelerine ve açık kalma saatlerine göre inceleyin.</p></div>
-            <div className="step-card"><span className="step-number">03</span><span className="step-icon"><Navigation size={26} /></span><h3>Yol tarifini alın</h3><p>Telefon edin veya tek dokunuşla harita üzerinden yol tarifini başlatın.</p></div>
+            <div className="step-card">
+              <span className="step-number">01</span>
+              <span className="step-icon">
+                <MapPin size={26} />
+              </span>
+              <h3>Şehir ve İlçe Seçin</h3>
+              <p>Türkiye'nin 81 ilinden dilediğinizi seçin veya tek tıkla GPS konumunuzu kullanın.</p>
+            </div>
+            <div className="step-card">
+              <span className="step-number">02</span>
+              <span className="step-icon">
+                <Cross size={26} />
+              </span>
+              <h3>Nöbetçi Eczaneleri Görün</h3>
+              <p>Sabah 09:00'a kadar kesintisiz açık eczanelerin güncel adres ve telefonlarını inceleyin.</p>
+            </div>
+            <div className="step-card">
+              <span className="step-number">03</span>
+              <span className="step-icon">
+                <Navigation size={26} />
+              </span>
+              <h3>Tek Tıkla Yol Tarifi</h3>
+              <p>Telefon edin veya doğrudan Google Haritalar ile yol tarifini anında başlatın.</p>
+            </div>
           </div>
         </div>
       </section>
 
+      {/* Update info section */}
       <section className="update-section">
         <div className="container update-box">
-          <div className="update-icon"><Clock3 size={26} /></div>
-          <div><p className="eyebrow">VERİ GÜNCELLEME</p><h2>Bilgiler düzenli olarak güncellenmektedir.</h2><p>Son güncelleme <strong>12:30</strong> · Bir sonraki kontrol yaklaşık 12:45</p></div>
-          <Link href="/veri-kaynaklari" className="button button-quiet">Veri kaynaklarını gör <ArrowRight size={19} /></Link>
+          <div className="update-icon">
+            <Clock3 size={26} />
+          </div>
+          <div>
+            <p className="eyebrow">VERİ VE KOTA GÜVENLİĞİ</p>
+            <h2>Nöbetçi listeleri her sabah 09:00'da yenilenir.</h2>
+            <p>
+              Akıllı önbellek mimarimiz sayesinde aylık 200 sorgu kotası en verimli şekilde korunur ve tüm veriler
+              anlık olarak servis edilir.
+            </p>
+          </div>
+          <Link href="/veri-kaynaklari" className="button button-quiet">
+            Veri ve Kota Detayları <ArrowRight size={19} />
+          </Link>
         </div>
       </section>
 
+      {/* Closing section */}
       <section className="closing-section">
         <div className="container closing-inner">
-          <div><p className="eyebrow">GÜVENİLİR VE SADE</p><h2>Mahallenizdeki güvenilir eczanenin dijital hali.</h2></div>
+          <div>
+            <p className="eyebrow">GÜVENİLİR VE SADE</p>
+            <h2>Mahallenizdeki güvenilir eczanenin dijital hali.</h2>
+          </div>
           <p>Nöbetçi Eczanem, ihtiyaç anında doğru bilgiye en kısa yoldan ulaşmanız için tasarlandı.</p>
-          <div className="closing-mark"><Sparkles size={20} /> Her gün yanınızda</div>
+          <div className="closing-mark">
+            <Sparkles size={20} /> Her gün 81 ilde yanınızda
+          </div>
         </div>
       </section>
     </main>

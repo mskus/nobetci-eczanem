@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, Plus, X } from "lucide-react";
+import { QuotaBadge } from "./QuotaBadge";
+import { useQuota } from "@/hooks/useQuota";
 
 type SiteLayoutProps = {
   children: React.ReactNode;
@@ -28,6 +30,7 @@ export function Brand() {
 export default function SiteLayout({ children }: SiteLayoutProps) {
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { quota } = useQuota();
 
   useEffect(() => {
     setMobileOpen(false);
@@ -49,16 +52,19 @@ export default function SiteLayout({ children }: SiteLayoutProps) {
               </Link>
             ))}
           </nav>
-          <button
-            type="button"
-            className="mobile-menu-button"
-            aria-expanded={mobileOpen}
-            aria-controls="mobile-navigation"
-            aria-label={mobileOpen ? "Menüyü kapat" : "Menüyü aç"}
-            onClick={() => setMobileOpen((open) => !open)}
-          >
-            {mobileOpen ? <X size={28} /> : <Menu size={28} />}
-          </button>
+          <div className="header-actions flex items-center gap-2">
+            <QuotaBadge quota={quota} />
+            <button
+              type="button"
+              className="mobile-menu-button"
+              aria-expanded={mobileOpen}
+              aria-controls="mobile-navigation"
+              aria-label={mobileOpen ? "Menüyü kapat" : "Menüyü aç"}
+              onClick={() => setMobileOpen((open) => !open)}
+            >
+              {mobileOpen ? <X size={28} /> : <Menu size={28} />}
+            </button>
+          </div>
         </div>
         {mobileOpen && (
           <nav id="mobile-navigation" className="mobile-nav" aria-label="Mobil navigasyon">

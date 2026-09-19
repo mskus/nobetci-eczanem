@@ -1,0 +1,52 @@
+{
+  "limit": 200,
+  "used": 4,
+  "remaining": 196,
+  "savedByCache": 2,
+  "period": "2026-09",
+  "lastRequestAt": "2026-09-19T09:33:59.453Z",
+  "history": [
+    {
+      "timestamp": "2026-09-19T09:34:06.574Z",
+      "endpoint": "/pharmacies/on-duty",
+      "query": "city=istanbul",
+      "fromCache": true,
+      "count": 3
+    },
+    {
+      "timestamp": "2026-09-19T09:33:59.453Z",
+      "endpoint": "/pharmacies/on-duty",
+      "query": "city=istanbul",
+      "fromCache": false,
+      "count": 398
+    },
+    {
+      "timestamp": "2026-09-19T09:32:04.179Z",
+      "endpoint": "/pharmacies/on-duty",
+      "query": "city=yalova",
+      "fromCache": true,
+      "count": 3
+    },
+    {
+      "timestamp": "2026-09-19T09:32:01.670Z",
+      "endpoint": "/pharmacies/on-duty",
+      "query": "city=yalova",
+      "fromCache": false,
+      "count": 19
+    },
+    {
+      "timestamp": "2026-09-19T09:31:56.825Z",
+      "endpoint": "/cities",
+      "query": "all",
+      "fromCache": false,
+      "count": 82
+    },
+    {
+      "timestamp": "2026-09-19T09:31:56.826Z",
+      "endpoint": "/pharmacies/on-duty",
+      "query": "city=yalova",
+      "fromCache": false,
+      "count": 19
+    }
+  ]
+}

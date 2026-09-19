@@ -1,0 +1,10 @@
+{
+  "name": "Nöbetçi Eczanem",
+  "description": "Yakınınızdaki nöbetçi eczaneyi kolayca bulun. Güncel nöbetçi eczane bilgileri ve yol tarifi.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
