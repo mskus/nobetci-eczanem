@@ -1,6 +1,6 @@
 {
-  "name": "Nöbetçi Eczanem",
-  "description": "Yakınınızdaki nöbetçi eczaneyi kolayca bulun. Güncel nöbetçi eczane bilgileri ve yol tarifi.",
+  "name": "Nöbetçi Eczanem · En Yakın Nöbetçi Eczane Bul | 81 İl Canlı Nöbet Listesi",
+  "description": "Türkiye genelinde 81 il ve ilçede şu anda açık olan güncel nöbetçi eczaneler. Konumunuza en yakın nöbetçi eczaneyi bulun, yol tarifi alın ve tek tıkla arayın.",
   "requestFramePermissions": [
     "geolocation"
   ],

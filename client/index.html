@@ -2,13 +2,96 @@
 <html lang="tr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
-    <meta name="description" content="Yakınınızdaki nöbetçi eczaneyi kolayca bulun. Güncel nöbetçi eczane bilgileri ve yol tarifi." />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+    
+    <!-- Primary SEO Meta Tags for Google & Yandex -->
+    <title>Nöbetçi Eczanem · En Yakın Nöbetçi Eczane Bul | 81 İl Canlı Nöbet Listesi</title>
+    <meta name="title" content="Nöbetçi Eczanem · En Yakın Nöbetçi Eczane Bul | 81 İl Canlı Nöbet Listesi" />
+    <meta name="description" content="Türkiye genelinde 81 il ve ilçede şu anda açık olan güncel nöbetçi eczaneler. Konumunuza en yakın nöbetçi eczaneyi bulun, yol tarifi alın ve tek tıkla arayın." />
+    <meta name="keywords" content="nöbetçi eczane, en yakın nöbetçi eczane, bugün nöbetçi eczane, istanbul nöbetçi eczane, ankara nöbetçi eczane, izmir nöbetçi eczane, bursa nöbetçi eczane, antalya nöbetçi eczane, açık eczane, acil ilaç" />
+    <meta name="author" content="Nöbetçi Eczanem" />
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+    <link rel="canonical" href="https://nobetci-eczanem.com/" />
+
+    <!-- Open Graph / Facebook / WhatsApp -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://nobetci-eczanem.com/" />
+    <meta property="og:title" content="Nöbetçi Eczanem · 81 İl Canlı Nöbetçi Eczaneler" />
+    <meta property="og:description" content="Şu anda açık nöbetçi eczaneler, canlı harita ve yol tarifi. 81 ilde en yakın eczaneyi anında bulun." />
+    <meta property="og:locale" content="tr_TR" />
+    <meta property="og:site_name" content="Nöbetçi Eczanem" />
+
+    <!-- Twitter Cards -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Nöbetçi Eczanem · En Yakın Nöbetçi Eczane" />
+    <meta name="twitter:description" content="81 il ve tüm ilçelerde açık nöbetçi eczaneleri hemen sorgulayın." />
+
+    <!-- Performance & Font Optimization -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    <title>Nöbetçi Eczanem · En Yakın Eczaneyi Bul</title>
+
+    <!-- Schema.org Rich Structured Data for Google / Yandex -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://nobetci-eczanem.com/#website",
+          "url": "https://nobetci-eczanem.com/",
+          "name": "Nöbetçi Eczanem",
+          "description": "81 İl Nöbetçi Eczane Sorgulama ve Canlı Harita",
+          "inLanguage": "tr-TR",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://nobetci-eczanem.com/?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
+          "@type": "MedicalWebPage",
+          "@id": "https://nobetci-eczanem.com/#webpage",
+          "url": "https://nobetci-eczanem.com/",
+          "name": "Canlı Nöbetçi Eczane Listesi ve Yol Tarifi",
+          "about": {
+            "@type": "MedicalCondition",
+            "name": "Acil İlaç ve Eczane İhtiyacı"
+          }
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Nöbetçi eczaneler kaça kadar açık?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Nöbetçi eczaneler akşam mesai bitiminden başlayarak ertesi sabah 09:00'a kadar kesintisiz 24 saat hizmet vermektedir."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Nöbetçi eczaneden reçetesiz ilaç alınır mı?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Evet, reçetesiz temin edilebilen ağrı kesici, ilk yardım malzemeleri, vitaminler ve acil medikal ürünler nöbetçi eczanelerden doğrudan satın alınabilir."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "En yakın nöbetçi eczane nasıl bulunur?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Nöbetçi Eczanem üzerinden 'Yakınımdaki Eczaneleri Bul' butonuna tıklayarak GPS konumunuza en yakın nöbetçi eczaneleri anında sıralayabilir ve yol tarifi alabilirsiniz."
+              }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>

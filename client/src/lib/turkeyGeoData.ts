@@ -96,6 +96,70 @@ export const TURKEY_CITY_COORDINATES: Record<string, { lat: number; lng: number;
   zonguldak: { lat: 41.4564, lng: 31.7987, areaCode: "0372" },
 };
 
+export const TURKEY_DISTRICT_COORDINATES: Record<string, Record<string, { lat: number; lng: number }>> = {
+  istanbul: {
+    adalar: { lat: 40.8744, lng: 29.1306 },
+    arnavutkoy: { lat: 41.1852, lng: 28.7408 },
+    atasehir: { lat: 40.9930, lng: 29.1132 },
+    avcilar: { lat: 40.9790, lng: 28.7214 },
+    bagcilar: { lat: 41.0340, lng: 28.8570 },
+    bahcelievler: { lat: 41.0024, lng: 28.8624 },
+    bakirkoy: { lat: 40.9780, lng: 28.8724 },
+    basaksehir: { lat: 41.0965, lng: 28.8028 },
+    bayrampasa: { lat: 41.0347, lng: 28.9118 },
+    besiktas: { lat: 41.0428, lng: 29.0077 },
+    beykoz: { lat: 41.1177, lng: 29.0982 },
+    beylikduzu: { lat: 41.0015, lng: 28.6489 },
+    beyoglu: { lat: 41.0370, lng: 28.9760 },
+    buyukcekmece: { lat: 41.0220, lng: 28.5855 },
+    catalca: { lat: 41.1436, lng: 28.4608 },
+    cekmekoy: { lat: 41.0352, lng: 29.1762 },
+    esenler: { lat: 41.0384, lng: 28.8895 },
+    esenyurt: { lat: 41.0342, lng: 28.6801 },
+    eyupsultan: { lat: 41.0480, lng: 28.9340 },
+    fatih: { lat: 41.0182, lng: 28.9497 },
+    gaziosmanpasa: { lat: 41.0573, lng: 28.9157 },
+    gungoren: { lat: 41.0162, lng: 28.8727 },
+    kadikoy: { lat: 40.9904, lng: 29.0292 },
+    kagithane: { lat: 41.0815, lng: 28.9734 },
+    kartal: { lat: 40.8886, lng: 29.1856 },
+    kucukcekmece: { lat: 40.9912, lng: 28.7712 },
+    maltepe: { lat: 40.9247, lng: 29.1311 },
+    pendik: { lat: 40.8767, lng: 29.2334 },
+    sancaktepe: { lat: 40.9905, lng: 29.2298 },
+    sariyer: { lat: 41.1663, lng: 29.0498 },
+    silivri: { lat: 41.0742, lng: 28.2478 },
+    sultanbeyli: { lat: 40.9669, lng: 29.2667 },
+    sultangazi: { lat: 41.1042, lng: 28.8687 },
+    sile: { lat: 41.1761, lng: 29.6128 },
+    sisli: { lat: 41.0602, lng: 28.9877 },
+    tuzla: { lat: 40.8164, lng: 29.3034 },
+    umraniye: { lat: 41.0256, lng: 29.1171 },
+    uskudar: { lat: 41.0264, lng: 29.0153 },
+    zeytinburnu: { lat: 40.9903, lng: 28.9037 },
+  },
+  ankara: {
+    cankaya: { lat: 39.9000, lng: 32.8600 },
+    kecioren: { lat: 39.9800, lng: 32.8600 },
+    yenimahalle: { lat: 39.9700, lng: 32.8100 },
+    mamak: { lat: 39.9300, lng: 32.9100 },
+    etimesgut: { lat: 39.9400, lng: 32.6800 },
+    sincan: { lat: 39.9600, lng: 32.5800 },
+    golbasi: { lat: 39.7900, lng: 32.8100 },
+    altindag: { lat: 39.9500, lng: 32.8700 },
+  },
+  izmir: {
+    konak: { lat: 38.4189, lng: 27.1287 },
+    karsiyaka: { lat: 38.4550, lng: 27.1150 },
+    bornova: { lat: 38.4650, lng: 27.2180 },
+    buca: { lat: 38.3880, lng: 27.1750 },
+    karabaglar: { lat: 38.3750, lng: 27.1250 },
+    bayrakli: { lat: 38.4620, lng: 27.1680 },
+    cigli: { lat: 38.4950, lng: 27.0600 },
+    gaziemir: { lat: 38.3200, lng: 27.1350 },
+  },
+};
+
 /**
  * Calculates straight line distance in km between two GPS coordinates using the Haversine formula
  */
@@ -258,6 +322,9 @@ export function generateCityPharmacies(
   const targetDate = dutyDateStr || (dayOffset === -1 ? schedule[0].date : dayOffset === 1 ? schedule[2].date : schedule[1].date);
 
   targetDistricts.forEach((dist, dIdx) => {
+    const distSlug = toTurkishSlug(dist);
+    const distCoords = TURKEY_DISTRICT_COORDINATES[citySlug]?.[distSlug] || coords;
+
     // 1 to 2 pharmacies per district, rotated by dayOffset
     const countForDist = targetDistricts.length <= 3 ? 4 : 2;
     for (let i = 0; i < countForDist; i++) {
@@ -266,17 +333,17 @@ export function generateCityPharmacies(
       const landmarkIndex = (dIdx * 2 + i + dayOffset * 2 + 5) % LANDMARKS.length;
       const pharmName = `${PHARMACY_NAMES[nameIndex]} Eczanesi`;
       
-      // Slight GPS jitter around city center (within ~0.04 deg approx 3-5 km)
-      const latOffset = ((Math.sin(dIdx * 11 + i * 7 + (dayOffset + 1) * 5) * 0.035) + (i * 0.008));
-      const lngOffset = ((Math.cos(dIdx * 13 + i * 5 + (dayOffset + 1) * 7) * 0.045) + (i * 0.008));
-      const lat = Number((coords.lat + latOffset).toFixed(6));
-      const lng = Number((coords.lng + lngOffset).toFixed(6));
+      // Fine GPS jitter around real district center (within ~0.008 deg approx 500m-1km on land)
+      const latOffset = (Math.sin(dIdx * 7 + i * 13 + (dayOffset + 1) * 3) * 0.006) + (i * 0.002);
+      const lngOffset = (Math.cos(dIdx * 5 + i * 11 + (dayOffset + 1) * 7) * 0.007) + (i * 0.002);
+      const lat = Number((distCoords.lat + latOffset).toFixed(6));
+      const lng = Number((distCoords.lng + lngOffset).toFixed(6));
       
       const phoneNum = `${coords.areaCode} ${Math.floor(200 + (dIdx * 17 + i * 23 + (dayOffset + 1) * 19) % 700)} ${String(Math.floor(10 + (i * 37) % 90)).padStart(2, "0")} ${String(Math.floor(10 + (dIdx * 41 + dayOffset * 13) % 90)).padStart(2, "0")}`;
       const buildingNo = Math.floor(12 + (dIdx * 7 + i * 11 + (dayOffset + 1) * 9) % 150);
 
       list.push({
-        id: `auto-${citySlug}-${toTurkishSlug(dist)}-${dayOffset}-${i + 1}`,
+        id: `auto-${citySlug}-${distSlug}-${dayOffset}-${i + 1}`,
         name: pharmName,
         address: `${dist} Mahallesi, ${STREET_TEMPLATES[streetIndex]} No: ${buildingNo}, (${LANDMARKS[landmarkIndex]}), ${dist} / ${cityName}`,
         phone: phoneNum,
@@ -286,7 +353,7 @@ export function generateCityPharmacies(
           longitude: lng,
         },
         city: { name: cityName, slug: citySlug },
-        district: { name: dist, slug: toTurkishSlug(dist) },
+        district: { name: dist, slug: distSlug },
         duty: {
           date: targetDate,
           isVerified: true,

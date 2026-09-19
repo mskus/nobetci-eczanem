@@ -235,63 +235,78 @@ function FormattedAddress({
 function InlineListAd({ index }: { index: number }) {
   const adContents = [
     {
-      title: "Acil Sağlık ve İlaç Danışma Hattı (ALO 184 SABİM)",
-      subtitle: "Nöbetçi eczanelerde aradığınız ilacı bulamadığınızda resmi sağlık danışma hattından 7/24 destek alabilirsiniz.",
+      title: "ALO 184 SABİM Sağlık Danışma",
+      subtitle: "Aradığınız ilacı bulamadığınızda veya acil sağlık konularında Sağlık Bakanlığı ALO 184 SABİM hattından 7/24 ücretsiz bilgi alabilirsiniz.",
       tag: "SAĞLIK REHBERİ",
-      cta: "ALO 184 Bilgi",
+      cta: "ALO 184'ü Ara",
       link: "tel:184",
+      highlight: "Kesintisiz 7/24 Çağrı Merkezi",
     },
     {
-      title: "e-Reçete ve Raporlu İlaç Temini Hatırlatması",
-      subtitle: "Nöbetçi eczanelerden e-reçete numaranız ve T.C. kimlik kartınız ile raporlu veya reçeteli ilaçlarınızı temin edebilirsiniz.",
+      title: "e-Reçete ve Raporlu İlaç Temini",
+      subtitle: "Nöbetçi eczanelerden T.C. kimlik numaranız ve e-reçete kodunuz ile tüm raporlu ve reçeteli ilaçlarınızı resmi fiyatla teslim alabilirsiniz.",
       tag: "ÖNEMLİ BİLGİ",
-      cta: "Reçete Sorgula",
+      cta: "e-Nabız Bilgi",
       link: "https://enabiz.gov.tr",
+      highlight: "Resmi SGK & e-Reçete Uyumu",
     },
     {
-      title: "7/24 Açık Nöbetçi Eczane ve İlk Yardım Noktaları",
-      subtitle: "Gece saatlerinde acil ilaç ihtiyaçlarınız için nöbetçi eczaneler sabah 09:00'a kadar kesintisiz hizmet vermektedir.",
-      tag: "KAMU DUYURUSU",
-      cta: "En Yakın Acil Servisler",
-      link: "#nasil-calisir",
+      title: "Gece Nöbet Saatleri (09:00'a Kadar)",
+      subtitle: "Nöbetçi eczaneler akşam mesai bitiminden ertesi sabah 09:00'a kadar kesintisiz hizmet vermektedir. Ekstra nöbet ücreti alınmaz.",
+      tag: "NÖBET KURALI",
+      cta: "Rehberi İncele",
+      link: "#sikca-sorulan-sorular",
+      highlight: "Standart İlaç Fiyat Tarifesi",
+    },
+    {
+      title: "112 Acil Çağrı & Ambulans Hizmeti",
+      subtitle: "Hayati tehlike arz eden acil sağlık durumlarında vakit kaybetmeden 112 Acil Çağrı Merkezini arayınız.",
+      tag: "ACİL ÇAĞRI",
+      cta: "112 Acil Ara",
+      link: "tel:112",
+      highlight: "Ücretsiz Acil Yardım",
     },
   ];
 
   const ad = adContents[(index - 1) % adContents.length];
 
   return (
-    <aside
-      className="w-full my-3 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-red-50/90 via-amber-50/70 to-red-50/80 border border-red-200/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-      aria-label="Sponsorlu duyuru ve sağlık rehberi"
+    <article
+      className="h-full flex flex-col justify-between p-5 rounded-2xl border border-red-200 bg-gradient-to-b from-red-50/70 via-white to-amber-50/50 shadow-xs hover:border-red-400 hover:shadow-md transition-all text-left"
+      aria-label="Sponsorlu bilgilendirme kartı"
     >
-      <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center shrink-0 shadow-xs font-black text-sm">
-          +
-        </div>
-        <div>
-          <div className="flex items-center gap-2 mb-0.5">
-            <span className="text-[10px] font-black uppercase tracking-wider text-red-700 bg-red-100/90 px-2 py-0.5 rounded">
-              {ad.tag}
-            </span>
-            <span className="text-[11px] text-gray-500 font-medium">Sponsorlu Bilgilendirme</span>
+      <div>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-black uppercase tracking-wider text-red-700 flex items-center gap-1.5 mb-1">
+              <span className="inline-block w-2 h-2 rounded-full bg-red-600 animate-pulse" />
+              {ad.tag} · SPONSORLU BİLGİLENDİRME
+            </p>
+            <h3 className="text-lg sm:text-xl font-extrabold text-gray-900 leading-tight">
+              {ad.title}
+            </h3>
+            <p className="text-xs font-bold text-red-800 mt-1">
+              {ad.highlight}
+            </p>
           </div>
-          <h4 className="text-sm sm:text-base font-extrabold text-gray-900 leading-tight">
-            {ad.title}
-          </h4>
-          <p className="text-xs text-gray-600 mt-1 max-w-2xl leading-relaxed">
-            {ad.subtitle}
-          </p>
+        </div>
+
+        <div className="my-3 py-3 border-y border-red-100/80 text-xs sm:text-sm text-gray-700 leading-relaxed">
+          <p>{ad.subtitle}</p>
         </div>
       </div>
-      <a
-        href={ad.link}
-        target={ad.link.startsWith("http") ? "_blank" : undefined}
-        rel="noreferrer"
-        className="shrink-0 px-4 py-2 rounded-xl text-xs font-extrabold text-red-700 bg-white border border-red-300 hover:bg-red-600 hover:text-white transition-all shadow-2xs whitespace-nowrap self-stretch sm:self-center text-center"
-      >
-        {ad.cta} →
-      </a>
-    </aside>
+
+      <div className="mt-auto pt-2">
+        <a
+          className="button button-primary w-full flex items-center justify-center gap-2 font-black text-sm py-2.5 px-3 rounded-xl shadow-xs"
+          href={ad.link}
+          target={ad.link.startsWith("http") ? "_blank" : undefined}
+          rel="noreferrer"
+        >
+          {ad.cta} <ArrowRight size={16} />
+        </a>
+      </div>
+    </article>
   );
 }
 
@@ -805,16 +820,128 @@ export default function Home() {
                       userLocation={userLocation}
                     />
                   </div>
-                  {/* Reklam: 4 eczanede bir araya sponsorlu duyuru/reklam kutusu eklenir */}
+                  {/* Reklam: 4 eczanede bir aynı boyutta reklam kartı eklenir */}
                   {(index + 1) % 4 === 0 && (
-                    <div className="col-span-full">
+                    <div className="h-full">
                       <InlineListAd index={Math.floor((index + 1) / 4)} />
                     </div>
                   )}
                 </div>
               ))}
+              {/* Listenin sonunda her zaman ilave 1 adet reklam kartı bulunur */}
+              <div className="h-full">
+                <InlineListAd index={Math.floor(activePharmacies.length / 4) + 1} />
+              </div>
             </div>
           )}
+        </div>
+      </section>
+
+      {/* SEO Rehber & Sıkça Sorulan Sorular (Google / Yandex Search Optimization) */}
+      <section className="py-12 bg-white border-t border-gray-100" id="sikca-sorulan-sorular">
+        <div className="container max-w-5xl">
+          <div className="mb-8">
+            <span className="eyebrow uppercase font-extrabold text-red-600 tracking-wider">
+              NÖBETÇİ ECZANE REHBERİ & SSS
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-black text-gray-900 mt-1">
+              Nöbetçi Eczaneler Hakkında Bilmeniz Gerekenler
+            </h2>
+            <p className="text-gray-600 text-sm sm:text-base mt-2">
+              Türkiye genelinde 81 ilde nöbetçi eczane sistemi, acil ilaç temini ve nöbet saatleri ile ilgili resmi mevzuat kuralları.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="p-5 rounded-2xl bg-gray-50 border border-gray-200">
+              <h3 className="text-base font-extrabold text-gray-900 mb-2 flex items-center gap-2">
+                <Clock3 size={18} className="text-red-600 shrink-0" />
+                Nöbetçi eczaneler kaça kadar açık?
+              </h3>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Nöbetçi eczaneler normal çalışma mesaisi bittiğinde (akşam 19:00 civarı) nöbete başlar ve <strong>ertesi gün sabah saat 09:00'a kadar</strong> kesintisiz 24 saat boyunca açık kalır. Pazar ve resmi tatil günlerinde ise tüm gün nöbetçi sistemi geçerlidir.
+              </p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-gray-50 border border-gray-200">
+              <h3 className="text-base font-extrabold text-gray-900 mb-2 flex items-center gap-2">
+                <ShieldCheck size={18} className="text-red-600 shrink-0" />
+                Nöbetçi eczanede ilaç fiyat farkı var mı?
+              </h3>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                <strong>Hayır, kesinlikle ekstra nöbet ücreti alınmaz.</strong> Türkiye'deki tüm eczanelerde Sağlık Bakanlığı ve SGK tarafından belirlenen resmi ilaç fiyat tarifesi ve katkı payı oranları 7/24 aynı şekilde uygulanır.
+              </p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-gray-50 border border-gray-200">
+              <h3 className="text-base font-extrabold text-gray-900 mb-2 flex items-center gap-2">
+                <Cross size={18} className="text-red-600 shrink-0" />
+                Reçetesiz veya raporlu ilaç alınabilir mi?
+              </h3>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Evet. T.C. kimlik numaranız ile sisteme kayıtlı raporlu ilaçlarınızı, hekiminizin yazdığı e-reçeteleri ve reçetesiz satılan ilk yardım/ağrı kesici ürünlerini nöbetçi eczanelerden temin edebilirsiniz.
+              </p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-gray-50 border border-gray-200">
+              <h3 className="text-base font-extrabold text-gray-900 mb-2 flex items-center gap-2">
+                <MapPin size={18} className="text-red-600 shrink-0" />
+                En yakın nöbetçi eczaneye nasıl gidilir?
+              </h3>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Sayfamızdaki <strong>"Yakınımdaki Eczaneleri Bul (GPS)"</strong> butonuna basarak size en yakın nöbetçileri mesafelerine göre sıralayabilir, <strong>"Yol Tarifi"</strong> butonuna tıklayarak Google Haritalar ile doğrudan navigasyon başlatabilirsiniz.
+              </p>
+            </div>
+          </div>
+
+          {/* Hızlı Şehir Nöbetçi Eczane Bağlantıları (SEO Internal Links) */}
+          <div className="mt-10 pt-8 border-t border-gray-200">
+            <h3 className="text-sm font-black text-gray-800 uppercase tracking-wider mb-4">
+              Popüler İl & İlçe Nöbetçi Eczane Sorgulama
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {[
+                "İstanbul Kadıköy",
+                "İstanbul Beşiktaş",
+                "İstanbul Üsküdar",
+                "İstanbul Bakırköy",
+                "İstanbul Şişli",
+                "Ankara Çankaya",
+                "Ankara Keçiören",
+                "Ankara Yenimahalle",
+                "İzmir Konak",
+                "İzmir Karşıyaka",
+                "İzmir Bornova",
+                "Bursa Osmangazi",
+                "Bursa Nilüfer",
+                "Antalya Muratpaşa",
+                "Adana Seyhan",
+                "Konya Selçuklu",
+                "Gaziantep Şahinbey",
+              ].map((loc) => {
+                const parts = loc.split(" ");
+                const cName = parts[0];
+                const dName = parts.slice(1).join(" ");
+                return (
+                  <button
+                    key={loc}
+                    type="button"
+                    onClick={() => {
+                      setCity(cName);
+                      const districts = getLocalDistricts(cName);
+                      setDistrictList(districts);
+                      setDistrict(dName);
+                      fetchPharmacies(cName, dName, userLocation);
+                      document.getElementById("sonuclar")?.scrollIntoView({ behavior: "smooth" });
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-red-50 hover:text-red-700 hover:border-red-300 border border-gray-200 text-xs font-bold text-gray-700 transition-all cursor-pointer"
+                  >
+                    {loc} Nöbetçi Eczane
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </section>
 
