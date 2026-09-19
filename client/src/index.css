@@ -71,6 +71,7 @@ button:focus-visible, a:focus-visible, select:focus-visible { outline: 4px solid
 
 .hero-section { min-height: auto; position: relative; background: linear-gradient(180deg, #fff 0%, #fff 86%, #fffaf9 100%); border-bottom: 1px solid #f0e8e7; display: flex; justify-content: center; padding: 32px 16px 36px; width: 100%; }
 .hero-content { text-align: center; width: 100%; max-width: 860px; margin: 0 auto; }
+.pharmacy-hero-map, .pharmacy-hero-map .map-preview, .pharmacy-hero-map .map-canvas { height: 520px; }
 .hero-eyebrow, .eyebrow { color: var(--red); font-size: 13px; font-weight: 800; letter-spacing: .06em; line-height: 1.3; }
 
 /* Leaflet stacking context isolation */
@@ -180,6 +181,7 @@ select { appearance: none; min-height: 48px; width: 100%; border: 1px solid #cfc
   .mobile-nav-link:last-child { border: 0; }
   .hero-section { min-height: calc(100dvh - 62px); box-sizing: border-box; padding: 24px 12px 28px; }
   .hero-content { min-height: calc(100dvh - 62px); }
+  .pharmacy-hero-map, .pharmacy-hero-map .map-preview, .pharmacy-hero-map .map-canvas { height: max(420px, calc(100dvh - 160px)); }
   .hero-content h1 { font-size: clamp(28px, 8vw, 42px); }
   .hero-lead { font-size: 16px; margin-bottom: 16px; }
   .search-panel { padding: 14px 12px; }

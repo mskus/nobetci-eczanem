@@ -185,20 +185,13 @@ function FormattedAddress({
 }) {
   const raw = (address || "").trim();
 
-  // 1. Extract explicit landmark or parentheses / Tarif text
-  let landmarkText = directLandmark || addressDescription || null;
-
-  if (!landmarkText) {
-    const pMatch = raw.match(/\(([^)]+)\)/);
-    if (pMatch) {
-      landmarkText = pMatch[1].trim();
-    } else {
-      const tarifMatch = raw.match(/(?:Tarif|Açıklama|Adres Tarifi|Konum Tarifi):\s*([^,]+)/i);
-      if (tarifMatch) {
-        landmarkText = tarifMatch[1].trim();
-      }
-    }
-  }
+  // Source addresses frequently place directions in parentheses.
+  const parentheticalDirections = [...raw.matchAll(/\(([^)]+)\)/g)]
+    .map((match) => match[1].trim()).filter(Boolean);
+  const inlineDirection = raw.match(/(?:Tarif|Açıklama|Adres Tarifi|Konum Tarifi):\s*([^,]+)/i)?.[1]?.trim();
+  const directions = [directLandmark, addressDescription, ...parentheticalDirections, inlineDirection]
+    .map((part) => part?.trim()).filter((part): part is string => Boolean(part));
+  const landmarkText = [...new Set(directions)].join(" · ");
 
   // 2. Clean raw address string without parentheses or tarif tags
   let cleanAddress = raw
@@ -460,7 +453,7 @@ export default function Home() {
   const [districtList, setDistrictList] = useState<string[]>(() => getLocalDistricts("İstanbul"));
   const [city, setCity] = useState("İstanbul");
   const [district, setDistrict] = useState("Tümü");
-  const [selectedDayIndex, setSelectedDayIndex] = useState(0);
+  const [selectedDay, setSelectedDay] = useState<"Dün" | "Bugün" | "Yarın">("Bugün");
 
   const [loading, setLoading] = useState(false);
   const [daysData, setDaysData] = useState<DayDutyGroup[]>([]);
@@ -521,8 +514,7 @@ export default function Home() {
         setDaysData(result.days);
         setSourceNote(result.sourceName);
         setLastWasCache(result.wasCacheHit);
-        const todayIdx = result.days.findIndex((d) => d.day === "Bugün");
-        setSelectedDayIndex(todayIdx !== -1 ? todayIdx : 0);
+        setSelectedDay("Bugün");
         setSelectedPharmacy(0);
       } else {
         setDaysData([]);
@@ -549,7 +541,7 @@ export default function Home() {
   }, [userLocation]);
 
   // Current active day's pharmacies
-  const activeDayGroup = daysData[selectedDayIndex] || daysData[0];
+  const activeDayGroup = daysData.find((group) => group.day === selectedDay);
   const activePharmacies = activeDayGroup?.pharmacies || [];
 
   return (
@@ -562,8 +554,8 @@ export default function Home() {
           </h1>
 
           <div className="search-panel max-w-2xl mx-auto bg-white p-3 sm:p-5 rounded-2xl shadow-xl border border-red-100">
-            {/* Otomatik Canlı Harita - Kompakt Mobil Yükseklik */}
-            <div className="w-full my-3 sm:my-4 rounded-xl sm:rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white relative z-0 h-36 sm:h-64">
+            {/* Mobilde harita, başlığın altındaki ekran alanını doldurur. */}
+            <div className="pharmacy-hero-map w-full my-3 sm:my-4 rounded-xl sm:rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white relative z-0">
               <RealLeafletMap
                 pharmacies={activePharmacies}
                 selectedPharmacy={selectedPharmacy}
@@ -695,14 +687,15 @@ export default function Home() {
 
             {/* Dün / Bugün / Yarın Buttons - Mobil Uyumlu Kayan/Esnek Yapı */}
             <div className="w-full sm:w-auto overflow-x-auto no-scrollbar flex items-center justify-between gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200 shadow-2xs">
-              {daysData.map((dGroup, idx) => {
-                const isSelected = selectedDayIndex === idx;
+              {(["Dün", "Bugün", "Yarın"] as const).map((day) => {
+                const dGroup = daysData.find((group) => group.day === day);
+                const isSelected = selectedDay === day;
                 return (
                   <button
-                    key={dGroup.day || idx}
+                    key={day}
                     type="button"
                     onClick={() => {
-                      setSelectedDayIndex(idx);
+                      setSelectedDay(day);
                       setSelectedPharmacy(0);
                     }}
                     className={`flex-1 sm:flex-initial py-2 px-2.5 sm:px-3.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
@@ -711,8 +704,8 @@ export default function Home() {
                         : "text-gray-700 hover:text-gray-950 hover:bg-white/80"
                     }`}
                   >
-                    <span>{dGroup.day}</span>
-                    {dGroup.date && (
+                    <span>{day}</span>
+                    {dGroup?.date && (
                       <span
                         className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
                           isSelected ? "bg-red-700 text-white" : "text-gray-500"
@@ -721,13 +714,13 @@ export default function Home() {
                         {dGroup.date.slice(5).replace("-", "/")}
                       </span>
                     )}
-                    <span
+                    {dGroup && <span
                       className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-full ${
                         isSelected ? "bg-white text-red-600" : "bg-gray-200 text-gray-700"
                       }`}
                     >
                       {dGroup.count}
-                    </span>
+                    </span>}
                   </button>
                 );
               })}
@@ -745,9 +738,9 @@ export default function Home() {
             <div className="py-16 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-300 p-8 space-y-3">
               <Cross size={36} className="text-gray-400 mx-auto" />
               <h3 className="text-lg font-bold text-gray-800">
-                Seçilen bölgede nöbetçi eczane bulunamadı
+                {selectedDay !== "Bugün" && !activeDayGroup ? `${selectedDay} için nöbet listesi mevcut değil` : "Seçilen bölgede nöbetçi eczane bulunamadı"}
               </h3>
-              <p className="text-sm text-gray-500 max-w-md mx-auto">{sourceNote || "Konum izni verin veya il ve ilçe seçerek arama yapın. Veri bulunamazsa yerel eczacı odasının listesini kontrol edin."}</p>
+              <p className="text-sm text-gray-500 max-w-md mx-auto">{selectedDay !== "Bugün" && !activeDayGroup ? "Veri kaynağı bu güne ait liste yayımlamıyor. Bugün sekmesinden güncel nöbetçi eczaneleri görebilirsiniz." : sourceNote || "Konum izni verin veya il ve ilçe seçerek arama yapın. Veri bulunamazsa yerel eczacı odasının listesini kontrol edin."}</p>
               <button
                 type="button"
                 onClick={() => handleDistrictChange("Tümü")}
