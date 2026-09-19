@@ -2,6 +2,7 @@ import citiesDataJson from "@shared/cities.json";
 import { TURKEY_DISTRICTS, toTurkishSlug } from "@shared/turkeyDistricts";
 import {
   calculateDistanceKm,
+  findNearestCityAndDistrict,
   TURKEY_CITY_COORDINATES,
 } from "./turkeyGeoData";
 
@@ -213,6 +214,30 @@ function mapEczaneAdresiToPharmacies(
   }));
 }
 
+async function fetchEczaneAdresiNearest(
+  latitude: number,
+  longitude: number,
+  cityName: string
+): Promise<FetchResult | null> {
+  const url = `https://eczaneadresi.com/api/public/v1/nearest-pharmacies?lat=${encodeURIComponent(latitude)}&lng=${encodeURIComponent(longitude)}&limit=15`;
+  const data = await safeFetchJson<any>(url);
+  if (!data || !Array.isArray(data.pharmacies) || data.pharmacies.length === 0) return null;
+
+  const mapped = mapEczaneAdresiToPharmacies(data.pharmacies, cityName, toTurkishSlug(cityName));
+  const pharmacies = enrichDistances(mapped, { latitude, longitude }, cityName);
+  return {
+    success: true,
+    days: [{
+      day: "Bugün",
+      date: data.date || pharmacies[0]?.duty?.date || "",
+      count: pharmacies.length,
+      pharmacies,
+    }],
+    sourceName: "Veri: Eczane Adresi",
+    wasCacheHit: false,
+  };
+}
+
 /**
  * Automatic Multi-Source Pool & Fallback Fetcher
  * Tries sources in order without requiring manual user selection:
@@ -228,6 +253,13 @@ export async function fetchDutyPharmaciesAuto(
 ): Promise<FetchResult> {
   const citySlug = toTurkishSlug(cityName);
   const districtSlug = districtName && districtName !== "Tümü" ? toTurkishSlug(districtName) : "";
+
+  // GPS konumu varsa il merkezine göre değil, doğrudan kullanıcının çevresinde ara.
+  // GitHub Pages üzerinde de çalışabilen bu kaynak CORS destekler.
+  if (userLocation) {
+    const nearby = await fetchEczaneAdresiNearest(userLocation.latitude, userLocation.longitude, cityName);
+    if (nearby) return nearby;
+  }
 
   // 1. Try Local Server Proxy (with server-side cache & quota management)
   const proxyUrl = `${API_BASE_URL}/api/pharmacies/on-duty?city=${citySlug}${
@@ -311,30 +343,9 @@ export async function fetchNearbyPharmaciesAuto(
   }
 
   // 2. Try EczaneAdresi Public Nearest
-  try {
-    const eaUrl = `https://eczaneadresi.com/api/public/v1/nearest-pharmacies?lat=${latitude}&lng=${longitude}&limit=15`;
-    const eaRes = await safeFetchJson<any>(eaUrl);
-
-    if (eaRes && Array.isArray(eaRes.pharmacies) && eaRes.pharmacies.length > 0) {
-      const mapped = mapEczaneAdresiToPharmacies(eaRes.pharmacies, "Yakın Konum", "yakin-konum");
-      const sorted = enrichDistances(mapped, userLoc);
-      return {
-        success: true,
-        days: [
-          {
-            day: "Yakınınızdaki Nöbetçiler",
-            date: eaRes.date || new Date().toISOString().split("T")[0],
-            count: sorted.length,
-            pharmacies: sorted,
-          },
-        ],
-        sourceName: "EczaneAdresi.com GPS Servisi",
-        wasCacheHit: false,
-      };
-    }
-  } catch (e) {
-    // continue to fallback
-  }
+  const detectedCity = findNearestCityAndDistrict(latitude, longitude).city;
+  const nearby = await fetchEczaneAdresiNearest(latitude, longitude, detectedCity);
+  if (nearby) return nearby;
 
   // 3. Fallback nearby: Find closest Turkish city and generate relative to GPS
   let closestCity = "İstanbul";
@@ -348,5 +359,5 @@ export async function fetchNearbyPharmaciesAuto(
     }
   });
 
-  return fetchDutyPharmaciesAuto(closestCity, undefined, userLoc);
+  return fetchDutyPharmaciesAuto(closestCity, undefined, null);
 }
