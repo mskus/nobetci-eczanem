@@ -176,9 +176,9 @@ export function RealLeafletMap({
       const popupHtml = `
         <div style="font-family: inherit; padding: 4px; min-width: 170px;">
           <div style="color: #dc2626; font-size: 10px; font-weight: 800; text-transform: uppercase;">Nöbetçi Eczane</div>
-          <div style="font-size: 14px; font-weight: 800; color: #111; margin: 2px 0;">${pharmacy.name}</div>
+          <div style="font-size: 14px; font-weight: 800; color: #111; margin: 2px 0;">${pharmacy.name.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] || character)}</div>
           ${distanceBadge}
-          <div style="font-size: 11px; color: #666; margin-bottom: 6px;">${pharmacy.address || pharmacy.district?.name || ""}</div>
+          <div style="font-size: 11px; color: #666; margin-bottom: 6px;">${(pharmacy.address || pharmacy.district?.name || "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] || character)}</div>
           <div style="display: flex; gap: 8px;">
             <a href="tel:${pharmacy.phone.replace(/[^0-9+]/g, "")}" style="display: inline-block; background: #fdebec; color: #dc2626; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-decoration: none;">Ara</a>
             <a href="${mapsUrl}" target="_blank" rel="noreferrer" style="display: inline-block; background: #dc2626; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-decoration: none;">Yol Tarifi</a>

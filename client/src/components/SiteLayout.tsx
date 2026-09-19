@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { QuotaBadge } from "./QuotaBadge";
 import { useQuota } from "@/hooks/useQuota";
+import { startLocationUpdates } from "@/lib/globalLocation";
 
 type SiteLayoutProps = {
   children: React.ReactNode;
@@ -47,6 +48,8 @@ export default function SiteLayout({ children }: SiteLayoutProps) {
   useEffect(() => {
     setMobileOpen(false);
   }, [location]);
+
+  useEffect(() => { startLocationUpdates(); }, []);
 
   return (
     <div className="site-shell">
@@ -83,7 +86,7 @@ export default function SiteLayout({ children }: SiteLayoutProps) {
               <HeartPulse size={15} className="text-red-600 animate-pulse shrink-0" />
               <span>En Yakın Hastane</span>
               <span className="text-[10px] bg-red-600 text-white font-extrabold px-1.5 py-0.2 rounded shadow-2xs">
-                7/24 ACİL
+                KONUM
               </span>
             </Link>
 
@@ -190,7 +193,7 @@ export default function SiteLayout({ children }: SiteLayoutProps) {
                 <HeartPulse size={16} />
                 En Yakın Hastane & ASM
               </span>
-              <span className="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded font-extrabold">7/24 ACİL</span>
+              <span className="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded font-extrabold">KONUM</span>
             </Link>
             <Link href="/saglik-araclari" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center justify-between font-black text-emerald-700">
               <span className="flex items-center gap-2">
@@ -199,13 +202,22 @@ export default function SiteLayout({ children }: SiteLayoutProps) {
               </span>
               <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded font-extrabold">YENİ</span>
             </Link>
-            <Link href="/saglik-araclari" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800">
+            <Link href="/kan-bagisi" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800">
               <Syringe size={16} className="text-blue-600" />
               Kan Bağışı & İlk Yardım Merkezleri
             </Link>
-            <Link href="/saglik-araclari" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800">
+            <Link href="/titck-ilac-geri-cekme" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800">
               <ShieldAlert size={16} className="text-amber-600" />
               TİTCK İlaç Geri Çekme & Uyarılar
+            </Link>
+            <Link href="/sgk-katki-payi-hesaplayici" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800">
+              <Pill size={16} className="text-emerald-700" /> SGK Katkı Payı Hesaplayıcı
+            </Link>
+            <Link href="/hava-kalitesi-polen" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800">
+              <Activity size={16} className="text-cyan-700" /> Hava Kalitesi ve Polen
+            </Link>
+            <Link href="/ilk-yardim" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800">
+              <HeartPulse size={16} className="text-red-700" /> İlk Yardım Rehberi
             </Link>
             <Link href="/turkiyede-saglik" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800">
               <Globe2 size={16} className="text-cyan-700" />
@@ -257,7 +269,7 @@ export default function SiteLayout({ children }: SiteLayoutProps) {
           }`}
         >
           <HeartPulse className="w-5 h-5" />
-          <span className="text-[10px] tracking-tight">Acil 7/24</span>
+          <span className="text-[10px] tracking-tight">Hastaneler</span>
         </Link>
 
         <Link
@@ -285,7 +297,7 @@ export default function SiteLayout({ children }: SiteLayoutProps) {
             <div className="md:col-span-2 space-y-3">
               <Brand />
               <p className="text-xs sm:text-sm text-gray-400 max-w-md leading-relaxed">
-                Nöbetçi Eczanem; Türkiye genelinde 81 il ve 973 ilçede açık olan nöbetçi eczaneleri, 7/24 acil hastaneleri, SGK katkı payı hesaplayıcıyı, polen & hava indeksini, TİTCK ilaç geri çekme bültenlerini ve WHO sağlık göstergelerini tek ekranda sunan bağımsız sağlık portalıdır.
+                Nöbetçi Eczanem, ulaşılabildiğinde nöbetçi eczane kayıtlarını ve harita kaynaklı hastane konumlarını gösterir. Bilgileri gitmeden önce telefonla teyit edin.
               </p>
             </div>
 
@@ -394,23 +406,23 @@ export function MobileAd() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <strong className="text-sm font-black text-white">Nöbetçi Eczanem Mobil</strong>
+              <strong className="text-sm font-black text-white">Nöbetçi Eczanem Web</strong>
               <span className="text-[10px] font-bold bg-red-900/80 text-red-200 px-1.5 py-0.2 rounded border border-red-700">
                 ÜCRETSİZ
               </span>
             </div>
             <p className="text-xs text-gray-300">
-              7/24 Acil nöbetçi eczaneler, en yakın hastaneler ve sesli navigasyon cebinizde!
+              Telefonunuzun tarayıcısından eczane ve hastane araması yapın.
             </p>
           </div>
         </div>
 
         <Link
-          href="/reklam-ver"
+          href="/"
           className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white font-black text-xs py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 shrink-0"
         >
           <Download size={14} />
-          <span>Uygulamayı İndir</span>
+          <span>Eczaneleri Gör</span>
         </Link>
       </div>
     </div>

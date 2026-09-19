@@ -17,7 +17,7 @@ export interface QuotaState {
   }>;
 }
 
-const DATA_DIR = path.resolve(process.cwd(), "server", "data");
+const DATA_DIR = path.resolve(process.cwd(), "server", "runtime");
 const QUOTA_FILE = path.join(DATA_DIR, "quota.json");
 const MONTHLY_LIMIT = 200;
 
@@ -37,7 +37,17 @@ function ensureDataDir() {
 }
 
 export function loadQuotaState(): QuotaState {
-  if (cachedQuota) return cachedQuota;
+  if (cachedQuota && cachedQuota.period === getCurrentPeriod()) return cachedQuota;
+  if (cachedQuota) {
+    cachedQuota.period = getCurrentPeriod();
+    cachedQuota.used = 0;
+    cachedQuota.remaining = cachedQuota.limit;
+    cachedQuota.savedByCache = 0;
+    cachedQuota.history = [];
+    cachedQuota.lastRequestAt = null;
+    saveQuotaState(cachedQuota);
+    return cachedQuota;
+  }
 
   ensureDataDir();
   const currentPeriod = getCurrentPeriod();
@@ -63,27 +73,12 @@ export function loadQuotaState(): QuotaState {
 
   const initial: QuotaState = {
     limit: MONTHLY_LIMIT,
-    used: 2, // We used 2 test requests so far (cities + yalova)
-    remaining: MONTHLY_LIMIT - 2,
+    used: 0,
+    remaining: MONTHLY_LIMIT,
     savedByCache: 0,
     period: currentPeriod,
-    lastRequestAt: new Date().toISOString(),
-    history: [
-      {
-        timestamp: new Date().toISOString(),
-        endpoint: "/cities",
-        query: "all",
-        fromCache: false,
-        count: 82,
-      },
-      {
-        timestamp: new Date().toISOString(),
-        endpoint: "/pharmacies/on-duty",
-        query: "city=yalova",
-        fromCache: false,
-        count: 19,
-      },
-    ],
+    lastRequestAt: null,
+    history: [],
   };
 
   saveQuotaState(initial);

@@ -420,7 +420,7 @@ export function findNearestCityAndDistrict(
       const d = calculateDistanceKm(lat, lng, dCoords.lat, dCoords.lng);
       if (d < minDistrictDist) {
         minDistrictDist = d;
-        const cityDistList = TURKEY_DISTRICTS[cityName] || [];
+        const cityDistList = TURKEY_DISTRICTS[closestCitySlug] || [];
         const realDistName = cityDistList.find((dist: string) => toTurkishSlug(dist) === dSlug);
         closestDistrict = realDistName || dSlug.toUpperCase();
       }
@@ -429,4 +429,3 @@ export function findNearestCityAndDistrict(
 
   return { city: cityName, district: closestDistrict };
 }
-

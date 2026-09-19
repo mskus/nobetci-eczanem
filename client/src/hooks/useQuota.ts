@@ -2,14 +2,16 @@ import { useState, useEffect, useCallback } from "react";
 import { QuotaData } from "@/components/QuotaBadge";
 
 let globalQuota: QuotaData | null = null;
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 const listeners: Array<(quota: QuotaData | null) => void> = [];
 
 export function useQuota() {
   const [quota, setQuota] = useState<QuotaData | null>(globalQuota);
 
   const refreshQuota = useCallback(async () => {
+    if (!API_BASE_URL && (window.location.hostname !== "localhost" || window.location.port !== "3000")) return;
     try {
-      const res = await fetch("/api/quota");
+      const res = await fetch(`${API_BASE_URL}/api/quota`);
       if (res.ok) {
         const text = await res.text();
         if (text && !text.trim().startsWith("<") && !text.includes("<!DOCTYPE")) {

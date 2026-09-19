@@ -277,63 +277,11 @@ export function getFacilitiesByCity(
 ): HealthFacility[] {
   let list = SAMPLE_FACILITIES.filter((f) => f.city.toLocaleLowerCase("tr-TR") === city.toLocaleLowerCase("tr-TR"));
 
-  // If no static sample for this city, dynamically generate realistic facilities for the requested city/districts
-  if (list.length === 0) {
-    const distName = district && district !== "Tümü" ? district : "Merkez";
-    list = [
-      {
-        id: `dyn-h-${city}`,
-        name: `${city} ${distName} Devlet Hastanesi`,
-        type: "hastane",
-        typeName: "Devlet Hastanesi",
-        city,
-        district: distName,
-        address: `${distName} Mah. Hastane Cad. No:1, ${distName} / ${city}`,
-        landmark: `${city} Otogarı & Şehir Merkezi Ana Cadde Üzeri`,
-        phone: "0" + Math.floor(2000000000 + Math.random() * 7000000000),
-        emergencyPhone: "112",
-        is24Hours: true,
-        services: ["7/24 Acil Servis", "Tüm Poliklinikler", "Laboratuvar", "Röntgen / Tomografi"],
-        location: { latitude: 39.0 + (Math.random() - 0.5), longitude: 35.0 + (Math.random() - 0.5) },
-      },
-      {
-        id: `dyn-asm-${city}`,
-        name: `${city} ${distName} 1 No'lu Aile Sağlığı Merkezi`,
-        type: "saglik_ocagi",
-        typeName: "Aile Sağlığı Merkezi (ASM)",
-        city,
-        district: distName,
-        address: `${distName} Mah. Hükümet Cad. No:14, ${distName} / ${city}`,
-        landmark: `Kaymakamlık ve Belediye Binası Karşısı`,
-        phone: "0" + Math.floor(2000000000 + Math.random() * 7000000000),
-        is24Hours: false,
-        services: ["Aile Hekimliği", "Aşı & Enjeksiyon", "Rutin Kan Testleri", "Reçete Onayı"],
-        location: { latitude: 39.01 + (Math.random() - 0.5), longitude: 35.01 + (Math.random() - 0.5) },
-      },
-      {
-        id: `dyn-sk-${city}`,
-        name: `${city} ${distName} Merkez Sağlık Kabini`,
-        type: "saglik_kabini",
-        typeName: "Ruhsatlı Sağlık Kabini",
-        city,
-        district: distName,
-        address: `${distName} Mah. Atatürk Bulvarı No:28/B, ${distName} / ${city}`,
-        landmark: `Merkez Camii ve Çarşı Meydanı Yakını`,
-        phone: "0" + Math.floor(2000000000 + Math.random() * 7000000000),
-        is24Hours: true,
-        services: ["Reçeteli İğne / Enjeksiyon", "Pansuman", "Serum Takma", "Tansiyon Ölçümü"],
-        location: { latitude: 39.02 + (Math.random() - 0.5), longitude: 35.02 + (Math.random() - 0.5) },
-      },
-    ];
-  }
-
   // Filter by district if selected
   if (district && district !== "Tümü") {
     const distLower = district.toLocaleLowerCase("tr-TR");
     const distMatches = list.filter((f) => f.district.toLocaleLowerCase("tr-TR").includes(distLower));
-    if (distMatches.length > 0) {
-      list = distMatches;
-    }
+    list = distMatches;
   }
 
   // Filter by category

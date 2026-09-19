@@ -8,7 +8,7 @@ export interface CacheEntry<T = unknown> {
   expiresAt: string;
 }
 
-const DATA_DIR = path.resolve(process.cwd(), "server", "data");
+const DATA_DIR = path.resolve(process.cwd(), "server", "runtime");
 const CACHE_FILE = path.join(DATA_DIR, "cache.json");
 
 let memoryCache: Map<string, CacheEntry> = new Map();

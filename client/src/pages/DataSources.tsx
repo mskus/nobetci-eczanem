@@ -72,25 +72,25 @@ export default function DataSources() {
   }, [allCities, searchTerm]);
 
   // Quota calculation
-  const usedCount = quota?.used ?? 14;
+  const usedCount = quota?.used ?? 0;
   const limitCount = quota?.limit ?? 200;
   const remainingCount = quota?.remaining ?? (limitCount - usedCount);
   const percentUsed = Math.min(100, Math.round((usedCount / limitCount) * 100));
-  const savedByCache = quota?.savedByCache ?? 24;
+  const savedByCache = quota?.savedByCache ?? 0;
 
   const dataSourcesList = [
     {
       id: "eczane-api",
       name: "EczaneAPI.com",
-      badge: "Birincil Sağlayıcı (200 Kota)",
+      badge: "Sunucu kurulursa kullanılabilir",
       badgeColor: "bg-emerald-50 text-emerald-800 border-emerald-200",
-      status: "Aktif & Canlı",
+      status: quota ? "Sunucu bağlantısı var" : "Bu yayında etkin değil",
       statusColor: "text-emerald-600 bg-emerald-500",
       capacity: "Aylık 200 Sorgu Kotası",
       rateLimit: "10 req / sn",
       cacheStrategy: "09:00 Sabah TTL (İl Düzeyi)",
       description:
-        "Resmi İl Sağlık Müdürlükleri ve 54 Eczacı Odası verilerini tek çatı altında sunan resmi API katmanı. Tek bir il sorgusuyla dün, bugün ve yarının tüm ilçe nöbet listelerini tek seferde çekerek kotayı maksimum verimlilikle korur.",
+        "API anahtarı yalnızca ayrı bir sunucuda tutulabilir. GitHub Pages yayını sunucu çalıştırmaz; bağlantı kurulmadıkça bu kaynağın verileri gösterilmez.",
       endpoints: [
         "GET /pharmacies/on-duty?city={slug}",
         "GET /pharmacies/nearby?latitude={lat}&longitude={lng}",
@@ -102,13 +102,13 @@ export default function DataSources() {
       name: "EczaneAdresi.com Public v1",
       badge: "Doğrudan Kamu Servisi",
       badgeColor: "bg-blue-50 text-blue-800 border-blue-200",
-      status: "Aktif & Canlı",
+      status: "Yanıt verdiğinde kullanılır",
       statusColor: "text-blue-600 bg-blue-500",
       capacity: "IP Başına 60 İstek / Dakika",
       rateLimit: "60 req / dk / IP",
       cacheStrategy: "1 Saatlik Tarayıcı / Sunucu Önbelleği",
       description:
-        "CORS destekli açık kamu veri servisi. Türkiye genelindeki tüm eczanelerin doğrulanmış açık adresleri, telefon numaraları ve GPS koordinatlarını içeren yedek ve tamamlayıcı veri havuzu.",
+        "Tarayıcıdan sorgulanan harici kaynaktır. Kayıtların doğruluğu ve güncelliği ayrıca teyit edilmelidir; yanıt alınamazsa örnek eczane üretilmez.",
       endpoints: [
         "GET /api/public/v1/duty-pharmacies?city={slug}&limit=50",
         "GET /api/public/v1/nearest-pharmacies?lat={lat}&lng={lng}",
@@ -120,13 +120,13 @@ export default function DataSources() {
       name: "RapidAPI Nöbetçi Eczane",
       badge: "Yedek Entegrasyon (250 Kota)",
       badgeColor: "bg-amber-50 text-amber-800 border-amber-200",
-      status: "Hazırda Bekliyor (Failover)",
+      status: "Sunucu entegrasyonu mevcut",
       statusColor: "text-amber-600 bg-amber-500",
       capacity: "Aylık 250 İstek Kapasitesi",
       rateLimit: "5 req / sn",
       cacheStrategy: "Sabah 09:00 Devir Senkronizasyonu",
       description:
-        "Birincil kaynaklarda kota aşımı veya ağ kesintisi yaşandığında otomatik devreye giren yedek bulut sağlayıcı. Şehir, ilçe ve koordinat bazlı nöbetçi eczane sorgulama altyapısı.",
+        "RapidAPI uç noktaları sunucu kodunda bulunur; bu statik yayında otomatik yedek kaynak olarak kullanılmaz.",
       endpoints: [
         "GET /pharmacies-on-duty",
         "GET /pharmacies-on-duty/cities",
@@ -138,13 +138,13 @@ export default function DataSources() {
       name: "Resmi Eczacı Odaları & İl Sağlık Md.",
       badge: "Yasal Dayanak & Kayıt Defteri",
       badgeColor: "bg-purple-50 text-purple-800 border-purple-200",
-      status: "Resmi Doğrulama Aktif",
+      status: "Harici referans",
       statusColor: "text-purple-600 bg-purple-500",
       capacity: "81 İl / 973 İlçe Tam Kapsam",
       rateLimit: "7/24 Senkronizasyon",
       cacheStrategy: "Nöbet Listesi Onay Tarihleri",
       description:
-        "Türk Eczacıları Birliği (TEB) ve yerel eczacı odalarınca her ayın başında belirlenen ve resmi ilan panolarında yayımlanan nöbet çizelgelerinin doğrulanmış referans veri tabanı.",
+        "Yerel eczacı odalarının duyuruları karşılaştırma için referanstır. Bu sitede bu kaynaklarla otomatik doğrulama yapılmaz.",
       endpoints: [
         "İstanbul Eczacı Odası (İEO) Nöbet Çizelgesi",
         "Ankara Eczacı Odası Nöbet Otomasyonu",
@@ -174,13 +174,13 @@ export default function DataSources() {
       name: "Akıllı Önbellek & Havuz Sistemi",
       badge: "Kota Koruma Motoru",
       badgeColor: "bg-emerald-50 text-emerald-800 border-emerald-200",
-      status: "Tam Verimli Çalışıyor",
+      status: quota ? "Sunucu önbelleği kullanılabilir" : "Statik yayında etkin değil",
       statusColor: "text-emerald-600 bg-emerald-500",
       capacity: "Sınırsız Kullanıcı / 0 Ek Harcama",
       rateLimit: "Anlık (<5ms Yanıt Süresi)",
       cacheStrategy: "09:00 Nöbet Değişim TTL",
       description:
-        "Bir kullanıcı bir il için arama yaptığında, o ilin tüm ilçeleri ve 3 günlük nöbet verisi sunucu belleğine alınır. Sonraki tüm kullanıcılar kotadan 1 adet bile harcamadan 5 milisaniyede veriye ulaşır.",
+        "Sunucu kurulduğunda nöbet verisi süreli olarak önbelleğe alınır. GitHub Pages üzerinde bu sunucu önbelleği çalışmaz.",
       endpoints: [
         "MemoryCache: `on-duty:{citySlug}` (TTL: 09:00)",
         "GPS Rounding: Lat/Lng 2 basamak (~1.1 km kümeleme)",
@@ -194,14 +194,14 @@ export default function DataSources() {
       <PageIntro
         eyebrow="ŞEFFAFLIK & ALTYAPI"
         title="Veri Kaynakları & Canlı Tüketim Raporu"
-        description="Nöbetçi Eczanem; EczaneAPI, EczaneAdresi.com, RapidAPI ve Resmi Eczacı Odaları verilerini akıllı önbellek mimarisiyle birleştirerek 81 ilde kesintisiz ve güvenilir nöbetçi eczane hizmeti sunar."
+        description="Kaynakların durumu kullanılan yayın ortamına bağlıdır. Veri alınamazsa eczane kaydı üretilmez; lütfen gitmeden önce yerel eczacı odasının listesini kontrol edin."
       />
 
       <section className="py-8 bg-gray-50/50">
         <div className="container max-w-6xl mx-auto px-4">
           
           {/* 1. Canlı Kota ve Tüketim Raporu Kartı */}
-          <div className="bg-white rounded-2xl p-6 sm:p-8 mb-10 border border-gray-200 shadow-sm">
+          {quota ? <div className="bg-white rounded-2xl p-6 sm:p-8 mb-10 border border-gray-200 shadow-sm">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-6 border-b border-gray-100">
               <div className="flex items-center gap-3.5">
                 <div className="w-12 h-12 rounded-xl bg-red-50 text-red-600 flex items-center justify-center font-bold shrink-0">
@@ -218,7 +218,7 @@ export default function DataSources() {
                     </span>
                   </div>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Aktif Dönem: {quota?.period || "2026-09"} · Aylık 200 Sorgu Kotası Yönetimi · 09:00 TTL Senkronizasyonu
+                    Aktif Dönem: {quota.period} · Sunucu kota raporu
                   </p>
                 </div>
               </div>
@@ -291,7 +291,7 @@ export default function DataSources() {
                 <span className="text-[11px] text-blue-700 block mt-0.5">Kota harcanmadan</span>
               </div>
             </div>
-          </div>
+          </div> : <p className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-10 text-sm text-amber-900">Bu statik yayında sunucu kota raporu bulunmuyor.</p>}
 
           {/* 2. Tüm Veri Kaynakları Kartları (Tüketim Raporu Dahil) */}
           <div className="mb-10">
