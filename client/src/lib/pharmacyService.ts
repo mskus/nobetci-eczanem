@@ -2,10 +2,11 @@ import citiesDataJson from "@shared/cities.json";
 import { TURKEY_DISTRICTS, toTurkishSlug } from "@shared/turkeyDistricts";
 import {
   calculateDistanceKm,
-  generateCityPharmacies,
-  getOfficialDutySchedule,
   TURKEY_CITY_COORDINATES,
 } from "./turkeyGeoData";
+
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+const USE_SERVER = Boolean(API_BASE_URL) || (typeof window !== "undefined" && window.location.hostname === "localhost" && window.location.port === "3000");
 
 export interface PharmacyLocation {
   latitude: number | null;
@@ -67,8 +68,6 @@ export interface FetchResult {
   error?: string;
 }
 
-const ECZANE_API_KEY = "eczane_api_631b09b2dc2e4265a2f738e6f98ce398eda8f4391ef18570";
-
 /**
  * Get static list of all 81 cities instantly (0 network cost, zero <!DOCTYPE error)
  */
@@ -105,6 +104,8 @@ async function safeFetchJson<T = any>(
       },
     });
 
+    if (!res.ok) return null;
+
     const text = await res.text();
     // Detect HTML responses (Cloudflare block, SPA 404/index fallback)
     if (!text || text.trim().startsWith("<") || text.includes("<!DOCTYPE")) {
@@ -138,7 +139,7 @@ function enrichDistances(
   const targetLat = userLocation?.latitude || cityCoords.lat;
   const targetLng = userLocation?.longitude || cityCoords.lng;
 
-  const enriched = pharmacies.map((p, idx) => {
+  const enriched = pharmacies.map((p) => {
     if (p.location?.latitude && p.location?.longitude) {
       const dist = calculateDistanceKm(
         targetLat,
@@ -149,8 +150,7 @@ function enrichDistances(
       return { ...p, distance: Number(dist.toFixed(2)) };
     }
     // Fallback distance if no coordinates
-    const fallbackDist = Number((0.6 + (idx * 0.45)).toFixed(2));
-    return { ...p, distance: fallbackDist };
+    return { ...p, distance: undefined };
   });
 
   return enriched.sort((a, b) => {
@@ -161,54 +161,22 @@ function enrichDistances(
 }
 
 /**
- * Builds standard 3-day groups (Dün, Bugün, Yarın) using official 09:00 shift schedule
+ * Shows only records actually returned by a provider.
  */
-function buildThreeDays(
+function buildSingleDay(
   cityName: string,
-  districtName: string | undefined,
   userLocation: { latitude: number; longitude: number } | null | undefined,
-  primaryList: RawPharmacy[] = []
+  primaryList: RawPharmacy[],
+  sourceDate: string
 ): DayDutyGroup[] {
-  const schedule = getOfficialDutySchedule();
-
-  const yesterdayList = enrichDistances(
-    generateCityPharmacies(cityName, districtName, -1, schedule[0].date),
-    userLocation,
-    cityName
-  );
-
-  const todayList = primaryList.length > 0
-    ? enrichDistances(primaryList, userLocation, cityName)
-    : enrichDistances(
-        generateCityPharmacies(cityName, districtName, 0, schedule[1].date),
-        userLocation,
-        cityName
-      );
-
-  const tomorrowList = enrichDistances(
-    generateCityPharmacies(cityName, districtName, 1, schedule[2].date),
-    userLocation,
-    cityName
-  );
+  const todayList = enrichDistances(primaryList, userLocation, cityName);
 
   return [
     {
-      day: "Dün",
-      date: schedule[0].date,
-      count: yesterdayList.length,
-      pharmacies: yesterdayList,
-    },
-    {
       day: "Bugün",
-      date: schedule[1].date,
+      date: sourceDate,
       count: todayList.length,
       pharmacies: todayList,
-    },
-    {
-      day: "Yarın",
-      date: schedule[2].date,
-      count: tomorrowList.length,
-      pharmacies: tomorrowList,
     },
   ];
 }
@@ -239,7 +207,7 @@ function mapEczaneAdresiToPharmacies(
     },
     duty: {
       date: item.duty?.date || new Date().toISOString().split("T")[0],
-      isVerified: true,
+      isVerified: Boolean(item.duty?.isVerified),
     },
     distance: item.distance_m ? item.distance_m / 1000 : undefined,
   }));
@@ -262,19 +230,22 @@ export async function fetchDutyPharmaciesAuto(
   const districtSlug = districtName && districtName !== "Tümü" ? toTurkishSlug(districtName) : "";
 
   // 1. Try Local Server Proxy (with server-side cache & quota management)
-  const proxyUrl = `/api/pharmacies/on-duty?city=${citySlug}${
+  const proxyUrl = `${API_BASE_URL}/api/pharmacies/on-duty?city=${citySlug}${
     districtName && districtName !== "Tümü" ? `&district=${encodeURIComponent(districtName)}` : ""
   }`;
 
-  const proxyRes = await safeFetchJson<any>(proxyUrl);
+  const proxyRes = USE_SERVER
+    ? await safeFetchJson<any>(proxyUrl) : null;
   if (proxyRes && proxyRes.success && proxyRes.data?.days?.length > 0) {
-    const primaryPharms = proxyRes.data.days[0]?.pharmacies || [];
-    const threeDays = buildThreeDays(cityName, districtName, userLocation, primaryPharms);
+    const threeDays = proxyRes.data.days.map((day: DayDutyGroup) => ({
+      ...day,
+      pharmacies: enrichDistances(day.pharmacies || [], userLocation, cityName),
+    }));
 
     return {
       success: true,
       days: threeDays,
-      sourceName: "EczaneAPI (Resmi İl Sağlık / Eczacı Odaları)",
+      sourceName: proxyRes.source || "EczaneAPI",
       wasCacheHit: proxyRes.wasCacheHit,
     };
   }
@@ -289,7 +260,7 @@ export async function fetchDutyPharmaciesAuto(
 
     if (eaRes && Array.isArray(eaRes.pharmacies) && eaRes.pharmacies.length > 0) {
       const mapped = mapEczaneAdresiToPharmacies(eaRes.pharmacies, cityName, citySlug, districtName);
-      const threeDays = buildThreeDays(cityName, districtName, userLocation, mapped);
+      const threeDays = buildSingleDay(cityName, userLocation, mapped, eaRes.date || mapped[0]?.duty?.date || "");
       return {
         success: true,
         days: threeDays,
@@ -301,42 +272,11 @@ export async function fetchDutyPharmaciesAuto(
     // continue to fallback
   }
 
-  // 3. Try EczaneAPI directly if CORS proxy or direct is allowed
-  try {
-    const directApiUrl = `https://eczaneapi.com/api/v1/pharmacies/on-duty?city=${citySlug}`;
-    const directRes = await safeFetchJson<any>(directApiUrl, {
-      headers: { "X-API-Key": ECZANE_API_KEY },
-    });
-
-    if (directRes && directRes.success && Array.isArray(directRes.data) && directRes.data.length > 0) {
-      let pharms = directRes.data[0]?.pharmacies || [];
-      if (districtSlug) {
-        pharms = pharms.filter((p: any) => {
-          const d = p.district?.slug ? toTurkishSlug(p.district.slug) : "";
-          return d === districtSlug || (p.district?.name && toTurkishSlug(p.district.name) === districtSlug);
-        });
-      }
-      const threeDays = buildThreeDays(cityName, districtName, userLocation, pharms);
-
-      return {
-        success: true,
-        days: threeDays,
-        sourceName: "EczaneAPI Doğrudan Bağlantı",
-        wasCacheHit: false,
-      };
-    }
-  } catch (e) {
-    // continue to fallback
-  }
-
-  // 4. Guaranteed authentic city generator fallback with real GPS coordinates for that specific city
-  const threeDays = buildThreeDays(cityName, districtName, userLocation);
-
   return {
-    success: true,
-    days: threeDays,
-    sourceName: `${cityName} İl Nöbet Ağı (Doğrulanmış Harita Verisi)`,
-    wasCacheHit: true,
+    success: false,
+    days: [],
+    sourceName: "Veri alınamadı",
+    error: "Nöbetçi eczane verisi şu anda alınamıyor.",
   };
 }
 
@@ -351,11 +291,13 @@ export async function fetchNearbyPharmaciesAuto(
   const userLoc = { latitude, longitude };
 
   // 1. Try local proxy
-  const proxyUrl = `/api/pharmacies/nearby?latitude=${latitude}&longitude=${longitude}&radius=${radius}`;
-  const proxyRes = await safeFetchJson<any>(proxyUrl);
+  const proxyUrl = `${API_BASE_URL}/api/pharmacies/nearby?latitude=${latitude}&longitude=${longitude}&radius=${radius}`;
+  const proxyRes = USE_SERVER
+    ? await safeFetchJson<any>(proxyUrl) : null;
 
-  if (proxyRes && proxyRes.success && proxyRes.data?.days?.length > 0) {
-    const days = proxyRes.data.days.map((d: DayDutyGroup) => ({
+  if (proxyRes && proxyRes.success && (proxyRes.data?.days?.length > 0 || proxyRes.data?.pharmacies?.length > 0)) {
+    const proxyDays: DayDutyGroup[] = proxyRes.data.days || [{ day: "Bugün", date: proxyRes.data.date || "", count: proxyRes.data.pharmacies.length, pharmacies: proxyRes.data.pharmacies }];
+    const days = proxyDays.map((d: DayDutyGroup) => ({
       ...d,
       pharmacies: enrichDistances(d.pharmacies, userLoc),
     }));

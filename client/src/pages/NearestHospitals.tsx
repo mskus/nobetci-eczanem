@@ -8,9 +8,6 @@ import {
   Search,
   ShieldCheck,
   Clock3,
-  Stethoscope,
-  HeartPulse,
-  Syringe,
   CheckCircle2,
   Loader2,
   AlertTriangle,
@@ -21,9 +18,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
   HealthFacility,
-  FacilityType,
   FACILITY_TYPE_LABELS,
-  getFacilitiesByCity,
 } from "@/lib/healthFacilityData";
 import { getLocalCities, getLocalDistricts } from "@/lib/pharmacyService";
 import {
@@ -33,9 +28,13 @@ import {
   formatDistance,
   findNearestCityAndDistrict,
 } from "@/lib/turkeyGeoData";
-import { getCachedUserLocation, requestAndCacheUserLocation } from "@/lib/globalLocation";
+import { useUserLocation, requestAndCacheUserLocation } from "@/lib/globalLocation";
+import { getNearbyHospitals } from "@/lib/nearbyHospitals";
 import { toTurkishSlug } from "@shared/turkeyDistricts";
 import { toast } from "sonner";
+
+const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (character) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] || character);
 
 // Leaflet Map Component for Hospitals & Clinics
 function HospitalLeafletMap({
@@ -44,12 +43,14 @@ function HospitalLeafletMap({
   userLocation,
   onSelect,
   areaTitle,
+  center,
 }: {
   facilities: HealthFacility[];
   selectedFacilityIndex: number;
   userLocation: { latitude: number; longitude: number } | null;
   onSelect: (index: number) => void;
   areaTitle: string;
+  center: { latitude: number; longitude: number };
 }) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
@@ -115,7 +116,9 @@ function HospitalLeafletMap({
             border-radius: 12px;
             border: 2px solid #ffffff;
             box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            white-space: nowrap;
+            white-space: normal;
+            overflow-wrap: anywhere;
+            max-width: 200px;
             display: flex;
             align-items: center;
             gap: 4px;
@@ -123,10 +126,10 @@ function HospitalLeafletMap({
             transition: all 0.2s;
           ">
             <span style="background:rgba(255,255,255,0.25);padding:1px 4px;border-radius:4px;font-size:9px;">#${idx + 1}</span>
-            <span>${fac.name.replace(/Hastanesi|Sağlık Ocağı|Aile Sağlığı Merkezi|Sağlık Kabini/gi, "").trim()}</span>
+            <span style="min-width:0;overflow-wrap:anywhere;line-height:1.2;">${escapeHtml(fac.name)}</span>
           </div>`,
-          iconSize: [120, 32],
-          iconAnchor: [60, 16],
+          iconSize: [200, 64],
+          iconAnchor: [100, 32],
         });
 
         const marker = L.marker([fac.location.latitude, fac.location.longitude], { icon }).addTo(map);
@@ -134,11 +137,11 @@ function HospitalLeafletMap({
         const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${fac.location.latitude},${fac.location.longitude}`;
         const popupContent = `
           <div style="font-family:sans-serif;padding:4px;min-width:180px;">
-            <span style="font-size:9px;font-weight:900;text-transform:uppercase;color:${color};">${fac.typeName}</span>
-            <strong style="display:block;font-size:13px;margin:2px 0;color:#111827;">${fac.name}</strong>
-            <p style="font-size:11px;color:#4b5563;margin:0 0 6px 0;">${fac.address}</p>
+            <span style="font-size:9px;font-weight:900;text-transform:uppercase;color:${color};">${escapeHtml(fac.typeName)}</span>
+            <strong style="display:block;font-size:13px;margin:2px 0;color:#111827;">${escapeHtml(fac.name)}</strong>
+            <p style="font-size:11px;color:#4b5563;margin:0 0 6px 0;">${escapeHtml(fac.address)}</p>
             <div style="display:flex;gap:4px;">
-              <a href="tel:${fac.phone.replace(/[^0-9+]/g, "")}" style="flex:1;text-align:center;background:#f3f4f6;color:#111827;padding:5px;border-radius:6px;font-size:11px;font-weight:bold;text-decoration:none;">Ara: ${fac.phone}</a>
+              ${fac.phone ? `<a href="tel:${fac.phone.replace(/[^0-9+]/g, "")}" style="flex:1;text-align:center;background:#f3f4f6;color:#111827;padding:5px;border-radius:6px;font-size:11px;font-weight:bold;text-decoration:none;">Ara: ${escapeHtml(fac.phone)}</a>` : ""}
               <a href="${mapsUrl}" target="_blank" style="flex:1;text-align:center;background:#dc2626;color:#ffffff;padding:5px;border-radius:6px;font-size:11px;font-weight:bold;text-decoration:none;">Yol Tarifi</a>
             </div>
           </div>
@@ -159,9 +162,14 @@ function HospitalLeafletMap({
 
       if (bounds.isValid()) {
         map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+      } else {
+        map.setView([center.latitude, center.longitude], 12);
       }
+    } else {
+      map.setView([center.latitude, center.longitude], 12);
     }
-  }, [facilities, selectedFacilityIndex, userLocation]);
+    map.invalidateSize();
+  }, [facilities, selectedFacilityIndex, userLocation, center.latitude, center.longitude]);
 
   return (
     <div className="relative w-full h-72 sm:h-96">
@@ -170,7 +178,7 @@ function HospitalLeafletMap({
         <MapPin size={14} className="text-red-600" />
         <span>{areaTitle} Sağlık Haritası</span>
         <span className="text-[10px] bg-red-100 text-red-800 px-1.5 py-0.2 rounded font-mono">
-          {facilities.length} Tesis
+          {facilities.length} Hastane
         </span>
       </div>
     </div>
@@ -182,15 +190,16 @@ export default function NearestHospitals() {
   const [selectedCity, setSelectedCity] = useState("İstanbul");
   const [districtList, setDistrictList] = useState<string[]>(() => getLocalDistricts("İstanbul"));
   const [selectedDistrict, setSelectedDistrict] = useState("Tümü");
-  const [selectedType, setSelectedType] = useState<FacilityType | "all">("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const userLocation = useUserLocation();
   const [selectedFacilityIdx, setSelectedFacilityIdx] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [mapFacilities, setMapFacilities] = useState<HealthFacility[] | null>(null);
+  const [mapError, setMapError] = useState(false);
 
   // Dynamic Center location when GPS is not enabled (relative to selected district/city center)
   const effectiveReferenceLocation = useMemo(() => {
-    if (userLocation) return userLocation;
+    if (userLocation && findNearestCityAndDistrict(userLocation.latitude, userLocation.longitude).city === selectedCity) return userLocation;
     const cSlug = toTurkishSlug(selectedCity);
     const dSlug = toTurkishSlug(selectedDistrict);
     if (selectedDistrict !== "Tümü" && TURKEY_DISTRICT_COORDINATES[cSlug]?.[dSlug]) {
@@ -201,34 +210,17 @@ export default function NearestHospitals() {
     return { latitude: cCoords.lat, longitude: cCoords.lng };
   }, [userLocation, selectedCity, selectedDistrict]);
 
+  const manualSelection = useRef(false);
   useEffect(() => {
-    const cached = getCachedUserLocation();
-    if (cached) {
-      setUserLocation({ latitude: cached.latitude, longitude: cached.longitude });
-      const { city: detectedCity, district: detectedDistrict } = findNearestCityAndDistrict(cached.latitude, cached.longitude);
-      setSelectedCity(detectedCity);
-      const dists = getLocalDistricts(detectedCity);
-      setDistrictList(dists);
-      setSelectedDistrict(detectedDistrict);
-    } else if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const loc = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
-          setUserLocation(loc);
-          requestAndCacheUserLocation();
-          const { city: detectedCity, district: detectedDistrict } = findNearestCityAndDistrict(loc.latitude, loc.longitude);
-          setSelectedCity(detectedCity);
-          const dists = getLocalDistricts(detectedCity);
-          setDistrictList(dists);
-          setSelectedDistrict(detectedDistrict);
-        },
-        () => {},
-        { timeout: 8000 }
-      );
-    }
-  }, []);
+    if (!userLocation || manualSelection.current) return;
+    const { city: detectedCity } = findNearestCityAndDistrict(userLocation.latitude, userLocation.longitude);
+    setSelectedCity(detectedCity);
+    setDistrictList(getLocalDistricts(detectedCity));
+    setSelectedDistrict("Tümü");
+  }, [userLocation]);
 
   const handleCityChange = (newCity: string) => {
+    manualSelection.current = true;
     setSelectedCity(newCity);
     const dists = getLocalDistricts(newCity);
     setDistrictList(dists);
@@ -239,22 +231,28 @@ export default function NearestHospitals() {
     if (!navigator.geolocation) return;
 
     setLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const loc = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
-        setUserLocation(loc);
-        setLoading(false);
-      },
-      (err) => {
-        setLoading(false);
-      },
-      { timeout: 8000 }
-    );
+    manualSelection.current = false;
+    requestAndCacheUserLocation(() => setLoading(false));
+    setTimeout(() => setLoading(false), 15000);
   };
 
+  const queryLatitude = effectiveReferenceLocation.latitude.toFixed(2);
+  const queryLongitude = effectiveReferenceLocation.longitude.toFixed(2);
+  useEffect(() => {
+    const controller = new AbortController();
+    setMapFacilities(null);
+    setMapError(false);
+    getNearbyHospitals(Number(queryLatitude), Number(queryLongitude), controller.signal)
+      .then((items) => { if (!controller.signal.aborted) setMapFacilities(items); })
+      .catch(() => { if (!controller.signal.aborted) setMapError(true); });
+    return () => controller.abort();
+  }, [queryLatitude, queryLongitude]);
+
   const facilities = useMemo(() => {
-    return getFacilitiesByCity(selectedCity, selectedDistrict, selectedType, effectiveReferenceLocation);
-  }, [selectedCity, selectedDistrict, selectedType, effectiveReferenceLocation]);
+    const records = mapFacilities ?? [];
+    return records.map((f) => ({ ...f, distance: calculateDistanceKm(effectiveReferenceLocation.latitude, effectiveReferenceLocation.longitude, f.location.latitude, f.location.longitude) }))
+      .sort((a, b) => a.distance - b.distance);
+  }, [mapFacilities, effectiveReferenceLocation]);
 
   const filteredFacilities = useMemo(() => {
     if (!searchTerm.trim()) return facilities;
@@ -303,61 +301,6 @@ export default function NearestHospitals() {
       <section className="py-5">
         <div className="container max-w-6xl mx-auto px-4">
           
-          {/* Kategori Seçim Sekmeleri */}
-          <div className="flex flex-wrap items-center gap-2 mb-4">
-            <button
-              type="button"
-              onClick={() => setSelectedType("all")}
-              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-                selectedType === "all"
-                  ? "bg-gray-900 text-white shadow-xs"
-                  : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-100"
-              }`}
-            >
-              <Building2 size={16} />
-              <span>Tüm Tesisler ({facilities.length})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setSelectedType("hastane")}
-              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-                selectedType === "hastane"
-                  ? "bg-red-600 text-white shadow-xs"
-                  : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-100"
-              }`}
-            >
-              <HeartPulse size={16} />
-              <span>Hastaneler (7/24 Acil)</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setSelectedType("saglik_ocagi")}
-              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-                selectedType === "saglik_ocagi"
-                  ? "bg-emerald-600 text-white shadow-xs"
-                  : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-100"
-              }`}
-            >
-              <Stethoscope size={16} />
-              <span>Sağlık Ocakları (ASM)</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setSelectedType("saglik_kabini")}
-              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-                selectedType === "saglik_kabini"
-                  ? "bg-blue-600 text-white shadow-xs"
-                  : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-100"
-              }`}
-            >
-              <Syringe size={16} />
-              <span>Sağlık Kabinleri & İğne</span>
-            </button>
-          </div>
-
           {/* Filtre ve Arama Paneli */}
           <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-xs mb-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -393,7 +336,7 @@ export default function NearestHospitals() {
               <div>
                 <select
                   value={selectedDistrict}
-                  onChange={(e) => setSelectedDistrict(e.target.value)}
+                  onChange={(e) => { manualSelection.current = true; setSelectedDistrict(e.target.value); }}
                   className="w-full bg-gray-50 border border-gray-300 font-bold text-gray-900 text-xs sm:text-sm rounded-xl py-2.5 px-3 focus:outline-none focus:border-red-500"
                 >
                   <option value="Tümü">Tüm İlçeler ({districtList.length})</option>
@@ -422,21 +365,22 @@ export default function NearestHospitals() {
 
             <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 mt-2.5 border-t border-gray-100 text-xs text-gray-600 font-medium">
               <span>
-                <strong>{selectedCity}</strong> {selectedDistrict !== "Tümü" ? `· ${selectedDistrict}` : ""} bölgesinde <strong>{filteredFacilities.length}</strong> tesis listeleniyor.
+                <strong>{selectedCity}</strong> {selectedDistrict !== "Tümü" ? `· ${selectedDistrict}` : ""} bölgesinde <strong>{filteredFacilities.length}</strong> hastane listeleniyor.
               </span>
               <span className="text-emerald-700 font-bold flex items-center gap-1">
                 <CheckCircle2 size={14} />
-                {userLocation ? "Mesafeler GPS konumunuza göre hesaplandı" : `Mesafeler ${selectedDistrict !== "Tümü" ? selectedDistrict : selectedCity} merkezine göre hesaplandı`}
+                {userLocation && effectiveReferenceLocation === userLocation ? "Mesafeler GPS konumunuza göre hesaplandı" : `Mesafeler ${selectedDistrict !== "Tümü" ? selectedDistrict : selectedCity} merkezine göre hesaplandı`}
               </span>
             </div>
           </div>
 
-          {/* İnteraktif Harita - Hastaneler, ASM ve Kabinler */}
+          {/* İnteraktif hastane haritası */}
           <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-md mb-6 bg-white">
             <HospitalLeafletMap
               facilities={filteredFacilities}
               selectedFacilityIndex={selectedFacilityIdx}
-              userLocation={userLocation}
+              userLocation={effectiveReferenceLocation === userLocation ? userLocation : null}
+              center={effectiveReferenceLocation}
               onSelect={(idx) => {
                 setSelectedFacilityIdx(idx);
                 const el = document.getElementById(`fac-card-${idx}`);
@@ -445,9 +389,20 @@ export default function NearestHospitals() {
               areaTitle={`${selectedCity} ${selectedDistrict !== "Tümü" ? selectedDistrict : ""}`}
             />
           </div>
+          {filteredFacilities.length === 0 && (
+            <p className="text-sm text-amber-900 mb-4">{mapFacilities === null && !mapError ? "Yakındaki hastaneler aranıyor..." : "Bu bölgede harita kaydı bulunamadı. Acil durumda 112'yi arayın."}</p>
+          )}
+          {mapError && <p className="text-xs text-amber-900 mb-4">Canlı harita sorgusu yapılamadı. Lütfen daha sonra tekrar deneyin.</p>}
+          {filteredFacilities.length === 0 && (mapError || mapFacilities?.length === 0) && (
+            <a className="inline-flex items-center gap-2 px-4 py-2 mb-5 rounded-xl bg-red-600 text-white font-bold text-sm"
+              href={`https://www.google.com/maps/search/hastane/@${effectiveReferenceLocation.latitude},${effectiveReferenceLocation.longitude},13z`}
+              target="_blank" rel="noreferrer">
+              <MapPin size={16} /> Bu konumda haritada hastane ara
+            </a>
+          )}
 
           {/* Sağlık Kuruluşları Kart Listesi */}
-          {filteredFacilities.length === 0 ? (
+          {filteredFacilities.length === 0 && mapFacilities === null && !mapError ? null : filteredFacilities.length === 0 ? (
             <div className="bg-white rounded-2xl border border-gray-200 p-10 text-center shadow-xs">
               <Building2 size={40} className="text-gray-300 mx-auto mb-3" />
               <h3 className="text-lg font-black text-gray-900 mb-1">Kayıt Bulunamadı</h3>
@@ -494,7 +449,7 @@ export default function NearestHospitals() {
                         <span className="shrink-0 text-xs font-black font-mono bg-red-100 text-red-800 px-2 py-0.5 rounded-md mt-0.5">
                           #{fIdx + 1}
                         </span>
-                        <h3 className="text-base font-black text-gray-900 leading-snug">
+                        <h3 className="min-w-0 flex-1 text-base font-black text-gray-900 leading-snug break-words [overflow-wrap:anywhere]">
                           {fac.name}
                         </h3>
                       </div>
@@ -542,14 +497,14 @@ export default function NearestHospitals() {
 
                     {/* Aksiyon Butonları */}
                     <div className="mt-auto pt-2 grid grid-cols-2 gap-2" onClick={(e) => e.stopPropagation()}>
-                      <a
+                      {fac.phone ? <a
                         className="button button-secondary flex items-center justify-center gap-1 font-bold text-xs py-2 px-1.5 rounded-xl whitespace-nowrap overflow-hidden"
                         href={`tel:${cleanPhone}`}
                         title={fac.phone}
                       >
                         <Phone size={13} className="shrink-0" />
                         <span className="truncate">{fac.phone}</span>
-                      </a>
+                      </a> : <span className="text-xs text-gray-500 self-center text-center">Telefon kaydı yok</span>}
                       <a
                         className="button button-quiet flex items-center justify-center gap-1 font-bold text-xs py-2 px-2 rounded-xl text-red-700 bg-red-50/80 hover:bg-red-100/80 whitespace-nowrap"
                         href={mapsUrl}

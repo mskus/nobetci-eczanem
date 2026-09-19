@@ -1,7 +1,6 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
-import { fileURLToPath } from "url";
 import { getOnDutyPharmacies, getNearbyPharmacies } from "./services/eczaneApi.js";
 import {
   getEczaneAdresiDutyPharmacies,
@@ -17,14 +16,24 @@ import {
 import { getQuotaSummary } from "./services/quotaService.js";
 import { TURKEY_DISTRICTS, toTurkishSlug } from "../shared/turkeyDistricts.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   app.use(express.json());
+  const allowedOrigin = process.env.WEB_ORIGIN;
+  if (allowedOrigin) {
+    app.use("/api", (req, res, next) => {
+      if (req.headers.origin === allowedOrigin) {
+        res.setHeader("Access-Control-Allow-Origin", allowedOrigin);
+        res.setHeader("Vary", "Origin");
+        res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+        res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+      }
+      if (req.method === "OPTIONS") return res.sendStatus(204);
+      next();
+    });
+  }
 
   // Load static cities data
   let citiesData: any[] = [];
@@ -116,7 +125,7 @@ async function startServer() {
           },
           duty: {
             date: eaData.date || new Date().toISOString().split("T")[0],
-            isVerified: true,
+            isVerified: Boolean(item.duty?.isVerified),
           },
         }));
 
@@ -205,7 +214,7 @@ async function startServer() {
           district: { name: item.district || "", slug: toTurkishSlug(item.district || "") },
           duty: {
             date: eaData.date || new Date().toISOString().split("T")[0],
-            isVerified: true,
+            isVerified: Boolean(item.duty?.isVerified),
           },
           distance: item.distance_m ? item.distance_m / 1000 : undefined,
         }));

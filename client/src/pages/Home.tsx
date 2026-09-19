@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
 import {
   ArrowRight,
@@ -16,7 +16,6 @@ import {
   Loader2,
   Calendar,
   Layers,
-  LocateFixed,
   Calculator,
   Wind,
   ShieldAlert,
@@ -28,13 +27,13 @@ import { toast } from "sonner";
 import { AdRail, MobileAd, SectionHeading } from "@/components/SiteLayout";
 import { RealLeafletMap } from "@/components/RealLeafletMap";
 import { useQuota } from "@/hooks/useQuota";
+import { useUserLocation } from "@/lib/globalLocation";
 import { toTurkishSlug } from "@shared/turkeyDistricts";
 import { formatDistance, calculateDistanceKm, findNearestCityAndDistrict, TURKEY_CITY_COORDINATES, TURKEY_DISTRICT_COORDINATES } from "@/lib/turkeyGeoData";
 import {
   getLocalCities,
   getLocalDistricts,
   fetchDutyPharmaciesAuto,
-  fetchNearbyPharmaciesAuto,
   type RawPharmacy,
   type DayDutyGroup,
 } from "@/lib/pharmacyService";
@@ -201,12 +200,6 @@ function FormattedAddress({
     }
   }
 
-  // If still no landmark text, construct a reliable local landmark for the district/city
-  if (!landmarkText) {
-    const locArea = district && district !== "Tümü" ? district : city || "Merkez";
-    landmarkText = `${locArea} Devlet Hastanesi & Aile Sağlığı Merkezi Civarı`;
-  }
-
   // 2. Clean raw address string without parentheses or tarif tags
   let cleanAddress = raw
     .replace(/\([^)]+\)/g, "")
@@ -215,7 +208,7 @@ function FormattedAddress({
     .trim();
 
   if (!cleanAddress || cleanAddress.length < 6) {
-    cleanAddress = `${district && district !== "Tümü" ? district + " Mah. " : ""}Atatürk Cad. No: 18/A`;
+    cleanAddress = "Adres bilgisi kaynaktan alınamadı; gitmeden önce eczaneyi arayın.";
   }
 
   // Ensure district and city suffix are clearly present
@@ -223,7 +216,7 @@ function FormattedAddress({
   const distLower = (district && district !== "Tümü" ? district : "").toLocaleLowerCase("tr-TR");
   
   let detailedFullAddress = cleanAddress;
-  if (cityLower && !detailedFullAddress.toLocaleLowerCase("tr-TR").includes(cityLower)) {
+  if (cityLower && !detailedFullAddress.startsWith("Adres bilgisi kaynaktan") && !detailedFullAddress.toLocaleLowerCase("tr-TR").includes(cityLower)) {
     detailedFullAddress += `, ${district && district !== "Tümü" ? district + " / " : ""}${city}`;
   }
 
@@ -441,13 +434,13 @@ function PharmacyCard({
       {/* Action Buttons Pinned at the Bottom for Uniform Alignment */}
       <div className="mt-auto pt-2 grid grid-cols-2 gap-2">
         <a
-          className="button button-secondary flex items-center justify-center gap-1 font-bold text-[11px] sm:text-xs py-2 px-1.5 rounded-xl overflow-hidden min-w-0"
+          className="button button-secondary flex items-center justify-center gap-1 font-bold text-[11px] sm:text-xs py-2 px-1.5 rounded-xl min-w-0"
           href={`tel:${cleanPhone}`}
           onClick={(event) => event.stopPropagation()}
           title={pharmacy.phone || "Telefon Et"}
         >
           <Phone size={13} className="shrink-0 text-red-600" />
-          <span className="truncate">{displayPhone || "Ara"}</span>
+          <span className="break-all leading-tight">{displayPhone || "Ara"}</span>
         </a>
         <a
           className="button button-quiet flex items-center justify-center gap-1 font-bold text-xs sm:text-[13px] py-2 px-2 rounded-xl text-red-700 bg-red-50/80 hover:bg-red-100/80 whitespace-nowrap"
@@ -473,7 +466,9 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [daysData, setDaysData] = useState<DayDutyGroup[]>([]);
   const [selectedPharmacy, setSelectedPharmacy] = useState(0);
-  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const userLocation = useUserLocation();
+  const manualSelection = useRef(false);
+  const latestRequest = useRef(0);
   const [locationNote, setLocationNote] = useState("Konum bilgisi alınamadı, lütfen il ve ilçe seçerek arama yapınız.");
   const [lastWasCache, setLastWasCache] = useState<boolean | undefined>(undefined);
   const [sourceNote, setSourceNote] = useState<string>("");
@@ -482,6 +477,7 @@ export default function Home() {
 
   // District list automatically syncs when city changes
   const handleCityChange = (newCity: string) => {
+    manualSelection.current = true;
     setCity(newCity);
     const newDistricts = getLocalDistricts(newCity);
     setDistrictList(newDistricts);
@@ -490,6 +486,7 @@ export default function Home() {
   };
 
   const handleDistrictChange = (newDistrict: string) => {
+    manualSelection.current = true;
     setDistrict(newDistrict);
     fetchPharmacies(city, newDistrict, userLocation);
   };
@@ -500,8 +497,12 @@ export default function Home() {
     targetDistrict?: string,
     locOverride?: { latitude: number; longitude: number } | null
   ) => {
+    const requestId = ++latestRequest.current;
     setLoading(true);
     let activeLoc = locOverride !== undefined ? locOverride : userLocation;
+    if (activeLoc && findNearestCityAndDistrict(activeLoc.latitude, activeLoc.longitude).city !== targetCity) {
+      activeLoc = null;
+    }
     if (!activeLoc) {
       const cSlug = toTurkishSlug(targetCity);
       const dSlug = targetDistrict && targetDistrict !== "Tümü" ? toTurkishSlug(targetDistrict) : "";
@@ -516,6 +517,7 @@ export default function Home() {
 
     try {
       const result = await fetchDutyPharmaciesAuto(targetCity, targetDistrict, activeLoc);
+      if (requestId !== latestRequest.current) return;
       if (result.success && result.days.length > 0) {
         setDaysData(result.days);
         setSourceNote(result.sourceName);
@@ -525,91 +527,27 @@ export default function Home() {
         setSelectedPharmacy(0);
       } else {
         setDaysData([]);
+        setSourceNote(result.error || "Doğrulanmış nöbetçi eczane verisi alınamadı.");
       }
     } catch (err: any) {
-      // Quiet fallback
+      if (requestId !== latestRequest.current) return;
+      setDaysData([]);
+      setSourceNote("Nöbetçi eczane verisi alınamadı.");
     } finally {
-      setLoading(false);
+      if (requestId === latestRequest.current) setLoading(false);
     }
   };
 
-  // GPS Nearby with automatic city/district state sync
-  const findNearby = () => {
-    if (!navigator.geolocation) {
-      setLocationNote("Tarayıcınız konum paylaşımını desteklemiyor.");
-      return;
-    }
-
-    setLocationNote("Konumunuz alınıyor...");
-    setLoading(true);
-
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude, longitude } = pos.coords;
-        const loc = { latitude, longitude };
-        setUserLocation(loc);
-
-        // Reverse-geocoding via local coordinate map
-        const { city: detectedCity, district: detectedDistrict } = findNearestCityAndDistrict(latitude, longitude);
-        setCity(detectedCity);
-        const newDists = getLocalDistricts(detectedCity);
-        setDistrictList(newDists);
-        setDistrict(detectedDistrict);
-
-        setLocationNote(`Konumunuz tespit edildi (${detectedCity} · ${detectedDistrict}). En yakın nöbetçiler sıralandı.`);
-
-        try {
-          const result = await fetchNearbyPharmaciesAuto(latitude, longitude);
-          if (result.success && result.days.length > 0) {
-            setDaysData(result.days);
-            setSourceNote(result.sourceName);
-            setLastWasCache(result.wasCacheHit);
-            setSelectedDayIndex(0);
-            setSelectedPharmacy(0);
-          } else {
-            fetchPharmacies(detectedCity, detectedDistrict, loc);
-          }
-        } catch (err) {
-          fetchPharmacies(detectedCity, detectedDistrict, loc);
-        } finally {
-          setLoading(false);
-        }
-      },
-      (err) => {
-        setLoading(false);
-        setLocationNote("Konum izni verilmedi. Şehir ve ilçe seçerek listeleyebilirsiniz.");
-      },
-      { timeout: 10000 }
-    );
-  };
-
-  // Initial fetch & Auto GPS on mount
+  // Location is watched once in the shared layout and stays current across pages.
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          const { latitude, longitude } = pos.coords;
-          const loc = { latitude, longitude };
-          setUserLocation(loc);
-
-          const { city: detectedCity, district: detectedDistrict } = findNearestCityAndDistrict(latitude, longitude);
-          setCity(detectedCity);
-          const newDists = getLocalDistricts(detectedCity);
-          setDistrictList(newDists);
-          setDistrict(detectedDistrict);
-
-          setLocationNote(`Konumunuz tespit edildi (${detectedCity} · ${detectedDistrict}). En yakın nöbetçiler sıralandı.`);
-          fetchPharmacies(detectedCity, detectedDistrict, loc);
-        },
-        () => {
-          fetchPharmacies("İstanbul", "Tümü");
-        },
-        { timeout: 6000 }
-      );
-    } else {
-      fetchPharmacies("İstanbul", "Tümü");
-    }
-  }, []);
+    if (!userLocation || manualSelection.current) return;
+    const { city: detectedCity } = findNearestCityAndDistrict(userLocation.latitude, userLocation.longitude);
+    setCity(detectedCity);
+    setDistrictList(getLocalDistricts(detectedCity));
+    setDistrict("Tümü");
+    setLocationNote(`GPS konumunuz alındı (${detectedCity}).`);
+    fetchPharmacies(detectedCity, "Tümü", userLocation);
+  }, [userLocation]);
 
   // Current active day's pharmacies
   const activeDayGroup = daysData[selectedDayIndex] || daysData[0];
@@ -625,21 +563,6 @@ export default function Home() {
           </h1>
 
           <div className="search-panel max-w-2xl mx-auto bg-white p-3 sm:p-5 rounded-2xl shadow-xl border border-red-100">
-            {/* Nöbetçi Eczaneleri Göster Butonu */}
-            <button
-              type="button"
-              className="w-full h-11 sm:h-13 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-sm sm:text-base shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
-              onClick={findNearby}
-              disabled={loading}
-            >
-              {loading ? (
-                <Loader2 className="w-5 h-5 animate-spin text-white shrink-0" />
-              ) : (
-                <LocateFixed className="w-5 h-5 text-white shrink-0" />
-              )}
-              <span>Nöbetçi Eczaneleri Göster</span>
-            </button>
-
             {/* Otomatik Canlı Harita - Kompakt Mobil Yükseklik */}
             <div className="w-full my-3 sm:my-4 rounded-xl sm:rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white relative z-0 h-36 sm:h-64">
               <RealLeafletMap
@@ -768,6 +691,7 @@ export default function Home() {
               <h2 className="text-2xl sm:text-3xl font-black text-gray-900 mt-1">
                 Nöbetçi Eczaneler
               </h2>
+              {sourceNote && <p className="text-xs text-gray-600 mt-1">Kaynak: {sourceNote}{activeDayGroup?.date ? ` · ${activeDayGroup.date}` : ""}</p>}
             </div>
 
             {/* Dün / Bugün / Yarın Buttons - Mobil Uyumlu Kayan/Esnek Yapı */}
@@ -824,10 +748,7 @@ export default function Home() {
               <h3 className="text-lg font-bold text-gray-800">
                 Seçilen bölgede nöbetçi eczane bulunamadı
               </h3>
-              <p className="text-sm text-gray-500 max-w-md mx-auto">
-                {city} {district !== "Tümü" ? district : ""} için nöbetçi kaydı henüz yayımlanmamış veya nöbet
-                listesi güncelleniyor olabilir.
-              </p>
+              <p className="text-sm text-gray-500 max-w-md mx-auto">{sourceNote || "Konum izni verin veya il ve ilçe seçerek arama yapın. Veri bulunamazsa yerel eczacı odasının listesini kontrol edin."}</p>
               <button
                 type="button"
                 onClick={() => handleDistrictChange("Tümü")}
@@ -849,18 +770,8 @@ export default function Home() {
                       userLocation={userLocation}
                     />
                   </div>
-                  {/* Reklam: 4 eczanede bir aynı boyutta reklam kartı eklenir */}
-                  {(index + 1) % 4 === 0 && (
-                    <div className="h-full">
-                      <InlineListAd index={Math.floor((index + 1) / 4)} />
-                    </div>
-                  )}
                 </div>
               ))}
-              {/* Listenin sonunda her zaman ilave 1 adet reklam kartı bulunur */}
-              <div className="h-full">
-                <InlineListAd index={Math.floor(activePharmacies.length / 4) + 1} />
-              </div>
             </div>
           )}
         </div>
@@ -1080,7 +991,7 @@ export default function Home() {
                 En yakın nöbetçi eczaneye nasıl gidilir?
               </h3>
               <p className="text-sm text-gray-600 leading-relaxed">
-                Sayfamızdaki <strong>"Yakınımdaki Eczaneleri Bul (GPS)"</strong> butonuna basarak size en yakın nöbetçileri mesafelerine göre sıralayabilir, <strong>"Yol Tarifi"</strong> butonuna tıklayarak Google Haritalar ile doğrudan navigasyon başlatabilirsiniz.
+                Konum izni verildiğinde yakınınızdaki kayıtlar otomatik listelenir. Bölgeyi elle değiştirmek için il ve ilçe seçip <strong>"Nöbetçi Eczaneleri Göster"</strong> butonuna basabilirsiniz.
               </p>
             </div>
           </div>
@@ -1151,7 +1062,7 @@ export default function Home() {
                 <MapPin size={26} />
               </span>
               <h3>Şehir ve İlçe Seçin</h3>
-              <p>Türkiye'nin 81 ilinden dilediğinizi seçin veya tek tıkla GPS konumunuzu kullanın.</p>
+              <p>Konum izni verildiğinde bölgeniz otomatik seçilir. İsterseniz il ve ilçe seçebilirsiniz.</p>
             </div>
             <div className="step-card">
               <span className="step-number">02</span>
@@ -1181,10 +1092,10 @@ export default function Home() {
           </div>
           <div>
             <p className="eyebrow">VERİ VE KOTA GÜVENLİĞİ</p>
-            <h2>Nöbetçi listeleri her sabah 09:00'da yenilenir.</h2>
+            <h2>Nöbetçi listelerinin güncelliğini kontrol edin.</h2>
             <p>
-              Akıllı önbellek mimarimiz sayesinde aylık 200 sorgu kotası en verimli şekilde korunur ve tüm veriler
-              anlık olarak servis edilir.
+              Kaynak ve tarih bilgisi sonuçların yanında gösterilir. Veri alınamadığında örnek eczane kaydı
+              gösterilmez. Gitmeden önce eczaneyi arayarak nöbet durumunu teyit edin.
             </p>
           </div>
           <Link href="/veri-kaynaklari" className="button button-quiet">

@@ -5,7 +5,7 @@ import { toTurkishSlug } from "../../shared/turkeyDistricts.js";
 const BASE_URL = "https://eczaneapi.com/api/v1";
 
 function getApiKey(): string {
-  const key = process.env.ECZANE_API_KEY || "eczane_api_631b09b2dc2e4265a2f738e6f98ce398eda8f4391ef18570";
+  const key = process.env.ECZANE_API_KEY;
   if (!key) {
     throw new Error("ECZANE_API_KEY environment variable is required");
   }
