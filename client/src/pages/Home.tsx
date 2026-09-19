@@ -645,7 +645,7 @@ export default function Home() {
                     : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-200"
                 }`}
               >
-                EczaneAPI (Resmi/200 Kota)
+                EczaneAPI (Aylık 200 Sorgu)
               </button>
               <button
                 type="button"
@@ -656,7 +656,7 @@ export default function Home() {
                     : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-200"
                 }`}
               >
-                EczaneAdresi.com (Public v1)
+                EczaneAdresi.com (60 req/dk/IP)
               </button>
               <button
                 type="button"
@@ -667,7 +667,7 @@ export default function Home() {
                     : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-200"
                 }`}
               >
-                RapidAPI (Yedek)
+                RapidAPI (250 req/ay)
               </button>
             </div>
 

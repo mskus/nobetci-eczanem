@@ -111,30 +111,44 @@ export default function DataSources() {
             </div>
           </div>
 
-          {/* API Endpoints & Sources Overview */}
+          {/* API Endpoints & Sources Overview with exact quotas & rate limits */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="p-5 bg-white rounded-2xl border border-gray-200 shadow-sm">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                <h3 className="font-extrabold text-gray-900 text-base">EczaneAPI.com</h3>
+            <div className="p-5 bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                    <h3 className="font-extrabold text-gray-900 text-base">EczaneAPI.com</h3>
+                  </div>
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    Aylık 200 Sorgu
+                  </span>
+                </div>
+                <p className="text-xs text-gray-600 mb-3">
+                  Resmi İl Sağlık Müdürlükleri ve Eczacı Odaları verileri. 81 il ve tüm ilçeler. Tek sorguda dün, bugün ve yarının nöbet listesi; akıllı önbellek ile 200 sorgu kotası korunur.
+                </p>
               </div>
-              <p className="text-xs text-gray-600 mb-3">
-                Resmi İl Sağlık Müdürlükleri ve Eczacı Odaları verileri. Aylık 200 sorgu kotası, 81 il ve tüm ilçeler. Tek sorguda dün, bugün ve yarının nöbet listesi.
-              </p>
               <div className="text-[11px] font-mono bg-gray-50 p-2 rounded border border-gray-100 text-gray-700">
                 GET /pharmacies/on-duty<br />
                 GET /pharmacies/nearby
               </div>
             </div>
 
-            <div className="p-5 bg-white rounded-2xl border border-gray-200 shadow-sm">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-                <h3 className="font-extrabold text-gray-900 text-base">EczaneAdresi.com Public v1</h3>
+            <div className="p-5 bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+                    <h3 className="font-extrabold text-gray-900 text-base">EczaneAdresi.com Public v1</h3>
+                  </div>
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200">
+                    60 req / dk / IP
+                  </span>
+                </div>
+                <p className="text-xs text-gray-600 mb-3">
+                  Doğrudan kamuya açık nöbetçi eczane ve konum servisi. Dakikada IP başına 60 istek rate limit ile il, ilçe ve GPS yakınlık algoritmaları.
+                </p>
               </div>
-              <p className="text-xs text-gray-600 mb-3">
-                Doğrudan kamuya açık nöbetçi eczane ve konum servisi. İl, ilçe ve GPS yakınlık algoritmaları.
-              </p>
               <div className="text-[11px] font-mono bg-gray-50 p-2 rounded border border-gray-100 text-gray-700">
                 GET /duty-pharmacies?city=&limit=<br />
                 GET /nearest-pharmacies?lat=&lng=<br />
@@ -142,14 +156,21 @@ export default function DataSources() {
               </div>
             </div>
 
-            <div className="p-5 bg-white rounded-2xl border border-gray-200 shadow-sm">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                <h3 className="font-extrabold text-gray-900 text-base">RapidAPI Nöbetçi Eczane</h3>
+            <div className="p-5 bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                    <h3 className="font-extrabold text-gray-900 text-base">RapidAPI Nöbetçi Eczane</h3>
+                  </div>
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                    250 / Month
+                  </span>
+                </div>
+                <p className="text-xs text-gray-600 mb-3">
+                  Alternatif yedek veri sağlayıcısı. Aylık 250 istek (Requests: 250 / Month) kapasitesi ile şehir ve koordinat bazlı nöbetçi eczane sorgulama altyapısı.
+                </p>
               </div>
-              <p className="text-xs text-gray-600 mb-3">
-                Yedek alternatif veri sağlayıcısı. Şehir ve koordinat bazlı nöbetçi eczane sorgulama altyapısı.
-              </p>
               <div className="text-[11px] font-mono bg-gray-50 p-2 rounded border border-gray-100 text-gray-700">
                 GET /pharmacies-on-duty<br />
                 GET /pharmacies-on-duty/cities<br />
