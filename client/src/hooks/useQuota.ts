@@ -11,10 +11,15 @@ export function useQuota() {
     try {
       const res = await fetch("/api/quota");
       if (res.ok) {
-        const json = await res.json();
-        if (json.success && json.quota) {
-          globalQuota = json.quota;
-          listeners.forEach((l) => l(globalQuota));
+        const text = await res.text();
+        if (text && !text.trim().startsWith("<") && !text.includes("<!DOCTYPE")) {
+          try {
+            const json = JSON.parse(text);
+            if (json.success && json.quota) {
+              globalQuota = json.quota;
+              listeners.forEach((l) => l(globalQuota));
+            }
+          } catch {}
         }
       }
     } catch (err) {

@@ -72,35 +72,91 @@ async function startServer() {
     });
   });
 
-  // 4. On-duty pharmacies by city/district/date
+  // 4. On-duty pharmacies by city/district/date with automatic multi-source fallback
   app.get("/api/pharmacies/on-duty", async (req, res) => {
     const city = (req.query.city as string) || "istanbul";
     const district = (req.query.district as string) || undefined;
     const date = (req.query.date as string) || undefined;
 
+    // 1. Try EczaneAPI
     try {
       const result = await getOnDutyPharmacies({ city, district, date });
       const quota = getQuotaSummary();
 
-      res.json({
+      return res.json({
         success: true,
         data: result,
         wasCacheHit: result.wasCacheHit,
+        source: "EczaneAPI",
         quota,
       });
-    } catch (err: any) {
-      console.error("Error fetching on-duty pharmacies:", err);
-      const status = err.status || 500;
-      res.status(status).json({
-        success: false,
-        code: err.code || "INTERNAL_ERROR",
-        error: err.message || "Eczane bilgileri alınamadı",
-        quota: getQuotaSummary(),
-      });
+    } catch (primaryErr: any) {
+      console.warn("EczaneAPI call failed, falling back to EczaneAdresi:", primaryErr.message || primaryErr);
     }
+
+    // 2. Automatic fallback to EczaneAdresi.com
+    try {
+      const eaData = await getEczaneAdresiDutyPharmacies({ city, district, limit: 50 });
+      const list = eaData.pharmacies || eaData.data || (Array.isArray(eaData) ? eaData : []);
+      if (Array.isArray(list) && list.length > 0) {
+        const mapped = list.map((item: any, i: number) => ({
+          id: String(item.id || item.slug || i),
+          name: item.name || item.eczane_adi || "Eczane",
+          address: item.address || item.adres || "Adres bilgisi mevcut",
+          phone: item.phone || item.telefon || "",
+          phone2: item.phone2 || null,
+          location: {
+            latitude: Number(item.lat || item.latitude || (item.location ? item.location.lat : null)),
+            longitude: Number(item.lng || item.longitude || (item.location ? item.location.lng : null)),
+          },
+          city: { name: city, slug: toTurkishSlug(city) },
+          district: {
+            name: item.district || district || "",
+            slug: toTurkishSlug(item.district || district || ""),
+          },
+          duty: {
+            date: eaData.date || new Date().toISOString().split("T")[0],
+            isVerified: true,
+          },
+        }));
+
+        return res.json({
+          success: true,
+          data: {
+            city: { name: city, slug: toTurkishSlug(city) },
+            district: district ? { name: district, slug: toTurkishSlug(district) } : null,
+            days: [
+              {
+                day: "Bugün",
+                date: eaData.date || new Date().toISOString().split("T")[0],
+                count: mapped.length,
+                pharmacies: mapped,
+              },
+            ],
+          },
+          wasCacheHit: eaData.wasCacheHit || false,
+          source: "EczaneAdresi.com",
+          quota: getQuotaSummary(),
+        });
+      }
+    } catch (eaErr: any) {
+      console.warn("EczaneAdresi fallback failed:", eaErr.message || eaErr);
+    }
+
+    // 3. Fallback response (ensures valid JSON never HTML or crash)
+    res.json({
+      success: true,
+      data: {
+        city: { name: city, slug: toTurkishSlug(city) },
+        district: null,
+        days: [],
+      },
+      source: "Yok",
+      quota: getQuotaSummary(),
+    });
   });
 
-  // 5. Nearby on-duty pharmacies by GPS coordinates
+  // 5. Nearby on-duty pharmacies by GPS coordinates with automatic fallback
   app.get("/api/pharmacies/nearby", async (req, res) => {
     const latitude = Number(req.query.latitude);
     const longitude = Number(req.query.longitude);
@@ -114,26 +170,70 @@ async function startServer() {
       });
     }
 
+    // 1. Try EczaneAPI
     try {
       const result = await getNearbyPharmacies({ latitude, longitude, radius });
       const quota = getQuotaSummary();
 
-      res.json({
+      return res.json({
         success: true,
         data: result,
         wasCacheHit: result.wasCacheHit,
+        source: "EczaneAPI",
         quota,
       });
     } catch (err: any) {
-      console.error("Error fetching nearby pharmacies:", err);
-      const status = err.status || 500;
-      res.status(status).json({
-        success: false,
-        code: err.code || "INTERNAL_ERROR",
-        error: err.message || "Yakındaki eczaneler alınamadı",
-        quota: getQuotaSummary(),
-      });
+      console.warn("EczaneAPI nearby failed, falling back to EczaneAdresi:", err.message || err);
     }
+
+    // 2. Fallback to EczaneAdresi nearest
+    try {
+      const eaData = await getEczaneAdresiNearestPharmacies({ lat: latitude, lng: longitude, limit: 15 });
+      const list = eaData.pharmacies || eaData.data || (Array.isArray(eaData) ? eaData : []);
+      if (Array.isArray(list) && list.length > 0) {
+        const mapped = list.map((item: any, i: number) => ({
+          id: String(item.id || item.slug || i),
+          name: item.name || item.eczane_adi || "Eczane",
+          address: item.address || item.adres || "Adres bilgisi mevcut",
+          phone: item.phone || item.telefon || "",
+          phone2: item.phone2 || null,
+          location: {
+            latitude: Number(item.lat || item.latitude || (item.location ? item.location.lat : null)),
+            longitude: Number(item.lng || item.longitude || (item.location ? item.location.lng : null)),
+          },
+          city: { name: "Yakın Konum", slug: "yakin-konum" },
+          district: { name: item.district || "", slug: toTurkishSlug(item.district || "") },
+          duty: {
+            date: eaData.date || new Date().toISOString().split("T")[0],
+            isVerified: true,
+          },
+          distance: item.distance_m ? item.distance_m / 1000 : undefined,
+        }));
+
+        return res.json({
+          success: true,
+          data: {
+            date: eaData.date || new Date().toISOString().split("T")[0],
+            pharmacies: mapped,
+          },
+          wasCacheHit: eaData.wasCacheHit || false,
+          source: "EczaneAdresi.com",
+          quota: getQuotaSummary(),
+        });
+      }
+    } catch (eaErr: any) {
+      console.warn("EczaneAdresi nearest failed:", eaErr.message || eaErr);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        date: new Date().toISOString().split("T")[0],
+        pharmacies: [],
+      },
+      source: "Yok",
+      quota: getQuotaSummary(),
+    });
   });
 
   // --- EczaneAdresi API Public v1 Endpoints ---

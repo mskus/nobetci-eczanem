@@ -22,39 +22,14 @@ import { AdRail, MobileAd, SectionHeading } from "@/components/SiteLayout";
 import { RealLeafletMap } from "@/components/RealLeafletMap";
 import { useQuota } from "@/hooks/useQuota";
 import { toTurkishSlug } from "@shared/turkeyDistricts";
-
-export interface PharmacyLocation {
-  latitude: number | null;
-  longitude: number | null;
-}
-
-export interface PharmacyDataQuality {
-  status: "passed" | "rejected" | string;
-  code: string | null;
-  checks?: string[];
-  addressVerified?: boolean;
-}
-
-export interface RawPharmacy {
-  id: string;
-  name: string;
-  address: string | null;
-  phone: string;
-  phone2?: string | null;
-  location?: PharmacyLocation;
-  city?: { name: string; slug: string };
-  district?: { name: string; slug: string };
-  duty?: { date: string; isVerified: boolean };
-  dataQuality?: PharmacyDataQuality;
-  distance?: number;
-}
-
-export interface DayDutyGroup {
-  day?: string; // "Dün", "Bugün", "Yarın"
-  date: string;
-  count: number;
-  pharmacies: RawPharmacy[];
-}
+import {
+  getLocalCities,
+  getLocalDistricts,
+  fetchDutyPharmaciesAuto,
+  fetchNearbyPharmaciesAuto,
+  type RawPharmacy,
+  type DayDutyGroup,
+} from "@/lib/pharmacyService";
 
 function MapPreview({
   pharmacies,
@@ -283,14 +258,11 @@ function PharmacyCard({
 }
 
 export default function Home() {
-  const [cityList, setCityList] = useState<Array<{ name: string; slug: string }>>([]);
-  const [districtList, setDistrictList] = useState<string[]>([]);
+  const [cityList] = useState<Array<{ name: string; slug: string }>>(() => getLocalCities());
+  const [districtList, setDistrictList] = useState<string[]>(() => getLocalDistricts("İstanbul"));
   const [city, setCity] = useState("İstanbul");
   const [district, setDistrict] = useState("Tümü");
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
-
-  // Data source selection: "eczaneapi" (primary, quota-managed), "eczaneadresi" (public v1), "rapidapi" (alternative)
-  const [dataSource, setDataSource] = useState<"eczaneapi" | "eczaneadresi" | "rapidapi">("eczaneapi");
 
   const [loading, setLoading] = useState(false);
   const [daysData, setDaysData] = useState<DayDutyGroup[]>([]);
@@ -301,191 +273,11 @@ export default function Home() {
 
   const { updateQuota } = useQuota();
 
-  // 1. Load 82 static cities (0 API quota cost)
-  useEffect(() => {
-    async function loadCities() {
-      try {
-        const res = await fetch("/api/cities");
-        const json = await res.json();
-        if (json.success && json.data) {
-          setCityList(json.data);
-        }
-      } catch (err) {
-        console.error("Cities load error:", err);
-      }
-    }
-    loadCities();
-  }, []);
-
-  // 2. Load districts whenever city changes (0 API quota cost)
-  useEffect(() => {
-    async function loadDistricts() {
-      const slug = toTurkishSlug(city);
-      try {
-        const res = await fetch(`/api/cities/${slug}/districts`);
-        const json = await res.json();
-        if (json.success && json.districts) {
-          setDistrictList(json.districts);
-        } else {
-          setDistrictList([]);
-        }
-      } catch (err) {
-        setDistrictList([]);
-      }
-    }
-    loadDistricts();
-    setDistrict("Tümü");
-  }, [city]);
-
-  // 3. Fetch pharmacies function supporting multiple data sources
-  const fetchPharmacies = async (
-    targetCity: string,
-    targetDistrict?: string,
-    overrideSource?: "eczaneapi" | "eczaneadresi" | "rapidapi"
-  ) => {
-    setLoading(true);
-    const activeSource = overrideSource || dataSource;
-    const citySlug = toTurkishSlug(targetCity);
-    const districtParam =
-      targetDistrict && targetDistrict !== "Tümü"
-        ? `&district=${encodeURIComponent(targetDistrict)}`
-        : "";
-
-    try {
-      if (activeSource === "eczaneapi") {
-        const res = await fetch(`/api/pharmacies/on-duty?city=${citySlug}${districtParam}`);
-        const json = await res.json();
-
-        if (json.success && json.data) {
-          setDaysData(json.data.days || []);
-          setLastWasCache(json.wasCacheHit);
-          setSourceNote("EczaneAPI (Resmi İl Sağlık / Eczacı Odaları)");
-
-          if (json.quota) {
-            updateQuota(json.quota);
-          }
-
-          const todayIdx = (json.data.days || []).findIndex(
-            (d: DayDutyGroup) => d.day === "Bugün"
-          );
-          setSelectedDayIndex(todayIdx !== -1 ? todayIdx : 0);
-          setSelectedPharmacy(0);
-
-          if (json.wasCacheHit) {
-            toast.success("Akıllı önbellekten 0 kotayla yüklendi ⚡");
-          } else {
-            toast.success("EczaneAPI: Güncel nöbetçi eczaneler listelendi");
-          }
-        } else {
-          toast.error(json.error || "Eczane listesi alınamadı");
-        }
-      } else if (activeSource === "eczaneadresi") {
-        // eczaneadresi.com public v1
-        const res = await fetch(
-          `/api/eczaneadresi/duty-pharmacies?city=${citySlug}${targetDistrict && targetDistrict !== "Tümü" ? `&district=${encodeURIComponent(toTurkishSlug(targetDistrict))}` : ""}&limit=50`
-        );
-        const json = await res.json();
-
-        if (json.success) {
-          const list: any[] = json.data || (Array.isArray(json) ? json : []);
-          const mapped: RawPharmacy[] = list.map((item: any, i: number) => ({
-            id: String(item.id || item.slug || i),
-            name: item.name || item.eczane_adi || "Eczane",
-            address: item.address || item.adres || "Adres bilgisi mevcut",
-            phone: item.phone || item.telefon || "",
-            phone2: item.phone2 || null,
-            location: {
-              latitude: item.lat || item.latitude || (item.location ? item.location.lat : null),
-              longitude: item.lng || item.longitude || (item.location ? item.location.lng : null),
-            },
-            city: { name: targetCity, slug: citySlug },
-            district: {
-              name: item.district || targetDistrict || "",
-              slug: toTurkishSlug(item.district || targetDistrict || ""),
-            },
-            duty: {
-              date: new Date().toISOString().split("T")[0],
-              isVerified: true,
-            },
-            distance: item.distance_m ? item.distance_m / 1000 : undefined,
-          }));
-
-          setDaysData([
-            {
-              day: "Bugün (EczaneAdresi.com)",
-              date: new Date().toISOString().split("T")[0],
-              count: mapped.length,
-              pharmacies: mapped,
-            },
-          ]);
-          setLastWasCache(json.wasCacheHit);
-          setSourceNote("EczaneAdresi.com Public API v1");
-          setSelectedDayIndex(0);
-          setSelectedPharmacy(0);
-          toast.success(`EczaneAdresi.com: ${mapped.length} eczane listelendi`);
-        } else {
-          toast.error(json.error || "EczaneAdresi verisi alınamadı");
-        }
-      } else if (activeSource === "rapidapi") {
-        // RapidAPI pharmacies-on-duty
-        const res = await fetch(
-          `/api/rapidapi/pharmacies-on-duty?city=${citySlug}${targetDistrict && targetDistrict !== "Tümü" ? `&district=${encodeURIComponent(toTurkishSlug(targetDistrict))}` : ""}`
-        );
-        const json = await res.json();
-
-        if (json.success || Array.isArray(json.data) || Array.isArray(json)) {
-          const list: any[] = json.data || (Array.isArray(json) ? json : []);
-          const mapped: RawPharmacy[] = list.map((item: any, i: number) => ({
-            id: String(item.id || item.name || i),
-            name: item.name || item.pharmacyName || "Eczane",
-            address: item.address || item.addressDescription || "Adres belirtilmemiş",
-            phone: item.phone || item.phoneNumber || "",
-            location: {
-              latitude: item.latitude || item.lat || null,
-              longitude: item.longitude || item.lon || null,
-            },
-            city: { name: targetCity, slug: citySlug },
-            district: {
-              name: item.district || targetDistrict || "",
-              slug: toTurkishSlug(item.district || targetDistrict || ""),
-            },
-            duty: {
-              date: new Date().toISOString().split("T")[0],
-              isVerified: true,
-            },
-          }));
-
-          setDaysData([
-            {
-              day: "Bugün (RapidAPI)",
-              date: new Date().toISOString().split("T")[0],
-              count: mapped.length,
-              pharmacies: mapped,
-            },
-          ]);
-          setLastWasCache(json.wasCacheHit);
-          setSourceNote("RapidAPI Pharmacies On Duty");
-          setSelectedDayIndex(0);
-          setSelectedPharmacy(0);
-          toast.success(`RapidAPI: ${mapped.length} eczane listelendi`);
-        } else {
-          toast.error(json.error || "RapidAPI verisi alınamadı");
-        }
-      }
-    } catch (err: any) {
-      toast.error(err.message || "Bağlantı hatası oluştu.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Initial fetch for default city
-  useEffect(() => {
-    fetchPharmacies("İstanbul", "Tümü");
-  }, []);
-
+  // District list automatically syncs when city changes (instant, 0 network, no <!DOCTYPE error)
   const handleCityChange = (newCity: string) => {
     setCity(newCity);
+    const newDistricts = getLocalDistricts(newCity);
+    setDistrictList(newDistricts);
     setDistrict("Tümü");
     fetchPharmacies(newCity, "Tümü");
   };
@@ -495,12 +287,36 @@ export default function Home() {
     fetchPharmacies(city, newDistrict);
   };
 
-  const handleSourceChange = (newSource: "eczaneapi" | "eczaneadresi" | "rapidapi") => {
-    setDataSource(newSource);
-    fetchPharmacies(city, district, newSource);
+  // Automated Multi-Source Pool & Fallback Fetcher
+  const fetchPharmacies = async (targetCity: string, targetDistrict?: string) => {
+    setLoading(true);
+    try {
+      const result = await fetchDutyPharmaciesAuto(targetCity, targetDistrict);
+      if (result.success && result.days.length > 0) {
+        setDaysData(result.days);
+        setSourceNote(result.sourceName);
+        setLastWasCache(result.wasCacheHit);
+        const todayIdx = result.days.findIndex((d) => d.day === "Bugün");
+        setSelectedDayIndex(todayIdx !== -1 ? todayIdx : 0);
+        setSelectedPharmacy(0);
+        toast.success(`${targetCity} nöbetçi eczaneleri güncellendi`);
+      } else {
+        setDaysData([]);
+        toast.error("Nöbetçi eczane bulunamadı.");
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Eczaneler yüklenirken hata oluştu.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // GPS Nearby
+  // Initial fetch on mount
+  useEffect(() => {
+    fetchPharmacies("İstanbul", "Tümü");
+  }, []);
+
+  // GPS Nearby with automatic multi-source fallback
   const findNearby = () => {
     if (!navigator.geolocation) {
       setLocationNote("Tarayıcınız konum paylaşımını desteklemiyor. Şehir ve ilçe seçebilirsiniz.");
@@ -517,68 +333,18 @@ export default function Home() {
         setLocationNote(`Konumunuz tespit edildi (${latitude.toFixed(3)}, ${longitude.toFixed(3)}). En yakın nöbetçiler getiriliyor.`);
 
         try {
-          if (dataSource === "eczaneadresi") {
-            // EczaneAdresi nearest
-            const res = await fetch(`/api/eczaneadresi/nearest-pharmacies?lat=${latitude}&lng=${longitude}&limit=10`);
-            const json = await res.json();
-            if (json.success) {
-              const list = json.data || (Array.isArray(json) ? json : []);
-              const mapped: RawPharmacy[] = list.map((item: any, i: number) => ({
-                id: String(item.id || item.slug || i),
-                name: item.name || item.eczane_adi || "Eczane",
-                address: item.address || item.adres || "Adres",
-                phone: item.phone || item.telefon || "",
-                location: {
-                  latitude: item.lat || null,
-                  longitude: item.lng || null,
-                },
-                distance: item.distance_m ? item.distance_m / 1000 : undefined,
-                duty: { date: new Date().toISOString().split("T")[0], isVerified: true },
-              }));
-              setDaysData([
-                {
-                  day: "Yakınınızda (EczaneAdresi.com)",
-                  date: new Date().toISOString().split("T")[0],
-                  count: mapped.length,
-                  pharmacies: mapped,
-                },
-              ]);
-              setLastWasCache(json.wasCacheHit);
-              setSourceNote("EczaneAdresi.com GPS En Yakın Eczaneler");
-              setSelectedDayIndex(0);
-              setSelectedPharmacy(0);
-              toast.success(`${mapped.length} adet nöbetçi eczane bulundu!`);
-              document.getElementById("sonuclar")?.scrollIntoView({ behavior: "smooth", block: "start" });
-              return;
-            }
-          }
-
-          // Default / Primary EczaneAPI
-          const res = await fetch(
-            `/api/pharmacies/nearby?latitude=${latitude}&longitude=${longitude}&radius=15`
-          );
-          const json = await res.json();
-
-          if (json.success && json.data) {
-            setLastWasCache(json.wasCacheHit);
-            if (json.quota) updateQuota(json.quota);
-            setSourceNote("EczaneAPI Canlı GPS Konum Servisi");
-
-            const pharmaciesList: RawPharmacy[] = json.data.pharmacies || [];
-            setDaysData([
-              {
-                day: "Yakınınızda Nöbetçi",
-                date: json.data.date || new Date().toISOString().split("T")[0],
-                count: pharmaciesList.length,
-                pharmacies: pharmaciesList,
-              },
-            ]);
+          const result = await fetchNearbyPharmaciesAuto(latitude, longitude);
+          if (result.success && result.days.length > 0) {
+            setDaysData(result.days);
+            setSourceNote(result.sourceName);
+            setLastWasCache(result.wasCacheHit);
             setSelectedDayIndex(0);
             setSelectedPharmacy(0);
-            toast.success(`${pharmaciesList.length} adet nöbetçi eczane bulundu!`);
+            const count = result.days[0]?.pharmacies?.length || 0;
+            toast.success(`${count} adet nöbetçi eczane bulundu!`);
             document.getElementById("sonuclar")?.scrollIntoView({ behavior: "smooth", block: "start" });
           } else {
-            toast.error(json.error || "Yakınınızda eczane bulunamadı");
+            toast.error("Yakınınızda eczane bulunamadı");
           }
         } catch (err) {
           toast.error("Konum bazlı eczaneler getirilemedi.");
@@ -633,42 +399,18 @@ export default function Home() {
               <span>veya 81 il ve ilçe seçin</span>
             </div>
 
-            {/* Kaynak Seçici / Data Source Selector */}
-            <div className="flex flex-wrap items-center justify-center gap-2 mb-2 p-1.5 bg-gray-100/80 rounded-xl border border-gray-200">
-              <span className="text-xs font-bold text-gray-500 mr-1">Veri Kaynağı:</span>
-              <button
-                type="button"
-                onClick={() => handleSourceChange("eczaneapi")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
-                  dataSource === "eczaneapi"
-                    ? "bg-red-600 text-white shadow-xs"
-                    : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-200"
-                }`}
-              >
-                EczaneAPI (Aylık 200 Sorgu)
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSourceChange("eczaneadresi")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
-                  dataSource === "eczaneadresi"
-                    ? "bg-red-600 text-white shadow-xs"
-                    : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-200"
-                }`}
-              >
-                EczaneAdresi.com (60 req/dk/IP)
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSourceChange("rapidapi")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
-                  dataSource === "rapidapi"
-                    ? "bg-red-600 text-white shadow-xs"
-                    : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-200"
-                }`}
-              >
-                RapidAPI (250 req/ay)
-              </button>
+            {/* Otomatik Canlı Harita - Kaynak Seçici Yerinde */}
+            <div className="w-full my-4 rounded-2xl overflow-hidden border border-gray-200 shadow-md bg-white">
+              <RealLeafletMap
+                pharmacies={activePharmacies}
+                selectedPharmacy={selectedPharmacy}
+                onSelect={(idx) => {
+                  setSelectedPharmacy(idx);
+                  const el = document.getElementById(`pharmacy-card-${idx}`);
+                  if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+                }}
+                areaTitle={`${city} ${district !== "Tümü" ? district : ""}`}
+              />
             </div>
 
             <div className="select-row">
@@ -813,24 +555,17 @@ export default function Home() {
               </button>
             </div>
           ) : (
-            <div className="results-layout">
-              <RealLeafletMap
-                pharmacies={activePharmacies}
-                selectedPharmacy={selectedPharmacy}
-                onSelect={(idx) => setSelectedPharmacy(idx)}
-                areaTitle={`${city} ${district !== "Tümü" ? district : ""}`}
-              />
-              <div className="pharmacy-list space-y-4">
-                {activePharmacies.map((pharmacy, index) => (
+            <div className="pharmacy-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {activePharmacies.map((pharmacy, index) => (
+                <div key={pharmacy.id || pharmacy.name + index} id={`pharmacy-card-${index}`}>
                   <PharmacyCard
-                    key={pharmacy.id || pharmacy.name + index}
                     pharmacy={pharmacy}
                     index={index}
                     selected={index === selectedPharmacy}
                     onSelect={() => setSelectedPharmacy(index)}
                   />
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
