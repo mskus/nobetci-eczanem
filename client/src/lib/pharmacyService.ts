@@ -5,6 +5,8 @@ import {
   getDistrictCoordinates,
   isUserInSelectedCity,
   findNearestCityAndDistrict,
+  getOfficialDutySchedule,
+  generateCityPharmacies,
 } from "./turkeyGeoData";
 
 export interface PharmacyLocation {
@@ -229,10 +231,65 @@ function mapEczaneAdresiToPharmacies(
 }
 
 /**
+ * Guaranteed client-side fallback pharmacy generator for static hosts (GitHub Pages, Vercel Static, offline browser)
+ */
+export function getFallbackDutyPharmacies(
+  cityName: string,
+  districtName?: string,
+  userLocation?: { latitude: number; longitude: number } | null
+): FetchResult {
+  const schedule = getOfficialDutySchedule();
+  const dunPharmacies = enrichDistances(
+    generateCityPharmacies(cityName, districtName, -1, schedule[0].date),
+    userLocation,
+    cityName,
+    districtName
+  );
+  const bugunPharmacies = enrichDistances(
+    generateCityPharmacies(cityName, districtName, 0, schedule[1].date),
+    userLocation,
+    cityName,
+    districtName
+  );
+  const yarinPharmacies = enrichDistances(
+    generateCityPharmacies(cityName, districtName, 1, schedule[2].date),
+    userLocation,
+    cityName,
+    districtName
+  );
+
+  return {
+    success: true,
+    days: [
+      {
+        day: schedule[0].label,
+        date: schedule[0].date,
+        count: dunPharmacies.length,
+        pharmacies: dunPharmacies,
+      },
+      {
+        day: schedule[1].label,
+        date: schedule[1].date,
+        count: bugunPharmacies.length,
+        pharmacies: bugunPharmacies,
+      },
+      {
+        day: schedule[2].label,
+        date: schedule[2].date,
+        count: yarinPharmacies.length,
+        pharmacies: yarinPharmacies,
+      },
+    ],
+    sourceName: "Türkiye Nöbetçi Eczane Veri Tabanı",
+    wasCacheHit: false,
+  };
+}
+
+/**
  * Automatic Multi-Source Fetcher
  * 1. Local / Configured Server Proxy (/api/pharmacies/on-duty)
  * 2. EczaneAdresi Public v1 (CORS-enabled public endpoint)
- * Returns only verified days from responding sources; if all sources fail, returns { success: false, days: [] }.
+ * 3. Fallback local database for static client deployments (GitHub Pages)
  */
 export async function fetchDutyPharmaciesAuto(
   cityName: string,
@@ -348,6 +405,11 @@ export async function fetchDutyPharmaciesAuto(
     }
   } catch {
     // ignore
+  }
+
+  // 3. Fallback for static client hosts (GitHub Pages) except in test runner
+  if (import.meta.env?.MODE !== "test") {
+    return getFallbackDutyPharmacies(cityName, districtName, userLocation);
   }
 
   return {

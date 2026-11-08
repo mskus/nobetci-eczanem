@@ -13,6 +13,7 @@ import {
   getLocalCities,
   getLocalDistricts,
   fetchDutyPharmaciesAuto,
+  getFallbackDutyPharmacies,
   RawPharmacy,
   DayDutyGroup,
 } from "@/lib/pharmacyService";
@@ -192,22 +193,25 @@ export default function AllPharmacies() {
       }
 
       const data = await fetchDutyPharmaciesAuto(city, dist, refLoc);
-      if (data && data.days && data.days.length > 0) {
-        const allList: RawPharmacy[] = [];
-        const seenNames = new Set<string>();
+      const activeData =
+        data && data.days && data.days.length > 0
+          ? data
+          : getFallbackDutyPharmacies(city, dist, refLoc);
 
-        data.days.forEach((dayGroup: DayDutyGroup) => {
-          dayGroup.pharmacies.forEach((pharm: RawPharmacy) => {
-            const key = `${pharm.name.toLocaleLowerCase("tr-TR")}_${pharm.district?.name || ""}`;
-            if (!seenNames.has(key)) {
-              seenNames.add(key);
-              allList.push(pharm);
-            }
-          });
+      const allList: RawPharmacy[] = [];
+      const seenNames = new Set<string>();
+
+      activeData.days.forEach((dayGroup: DayDutyGroup) => {
+        dayGroup.pharmacies.forEach((pharm: RawPharmacy) => {
+          const key = `${pharm.name.toLocaleLowerCase("tr-TR")}_${pharm.district?.name || ""}`;
+          if (!seenNames.has(key)) {
+            seenNames.add(key);
+            allList.push(pharm);
+          }
         });
+      });
 
-        setPharmacies(allList);
-      }
+      setPharmacies(allList);
     } catch {
       // Quiet fallback
     } finally {

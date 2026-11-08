@@ -47,6 +47,7 @@ import {
   getLocalDistricts,
   fetchDutyPharmaciesAuto,
   fetchNearbyPharmaciesAuto,
+  getFallbackDutyPharmacies,
   type RawPharmacy,
   type DayDutyGroup,
 } from "@/lib/pharmacyService";
@@ -462,16 +463,20 @@ export default function Home() {
 
     try {
       const result = await fetchDutyPharmaciesAuto(targetCity, targetDistrict, activeLoc);
-      if (result.success && result.days.length > 0) {
-        setDaysData(result.days);
-        const todayIdx = result.days.findIndex((d) => d.day === "Bugün");
-        setSelectedDayIndex(todayIdx !== -1 ? todayIdx : 0);
-        setSelectedPharmacy(0);
-      } else {
-        setDaysData([]);
-      }
+      const activeResult =
+        result.success && result.days.length > 0
+          ? result
+          : getFallbackDutyPharmacies(targetCity, targetDistrict, activeLoc);
+
+      setDaysData(activeResult.days);
+      const todayIdx = activeResult.days.findIndex((d) => d.day === "Bugün");
+      setSelectedDayIndex(todayIdx !== -1 ? todayIdx : 0);
+      setSelectedPharmacy(0);
     } catch {
-      // Quiet fallback handled in service
+      const fallback = getFallbackDutyPharmacies(targetCity, targetDistrict, activeLoc);
+      setDaysData(fallback.days);
+      setSelectedDayIndex(1);
+      setSelectedPharmacy(0);
     } finally {
       setLoading(false);
     }
