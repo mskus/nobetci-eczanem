@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect } from "react";
-import { Link } from "wouter";
 import {
   Building2,
   MapPin,
@@ -8,12 +7,8 @@ import {
   Search,
   Loader2,
   Compass,
-  ArrowRight,
   ShieldCheck,
-  CheckCircle2,
-  Map,
 } from "lucide-react";
-import { PageIntro } from "@/components/SiteLayout";
 import {
   getLocalCities,
   getLocalDistricts,
@@ -24,19 +19,23 @@ import {
 import {
   calculateDistanceKm,
   formatDistance,
-  TURKEY_CITY_COORDINATES,
-  TURKEY_DISTRICT_COORDINATES,
+  findNearestCityAndDistrict,
+  getDistrictCoordinates,
+  isUserInSelectedCity,
 } from "@/lib/turkeyGeoData";
-import { toTurkishSlug } from "@shared/turkeyDistricts";
-import { toast } from "sonner";
+import {
+  getCachedUserLocation,
+  setCachedUserLocation,
+  requestGlobalLocation,
+} from "@/lib/globalLocation";
 
 function formatCleanPhone(phoneStr?: string | null): string {
   if (!phoneStr) return "Telefon Et";
   const digits = phoneStr.replace(/[^0-9]/g, "");
   if (digits.length === 10) {
-    return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 8)} ${digits.slice(8, 10)}`;
+    return `0 (${digits.slice(0, 3)}) ${digits.slice(3, 6)} ${digits.slice(6, 8)} ${digits.slice(8, 10)}`;
   } else if (digits.length === 11 && digits.startsWith("0")) {
-    return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7, 9)} ${digits.slice(9, 11)}`;
+    return `0 (${digits.slice(1, 4)}) ${digits.slice(4, 7)} ${digits.slice(7, 9)} ${digits.slice(9, 11)}`;
   }
   return phoneStr;
 }
@@ -56,7 +55,6 @@ function FormattedAddress({
 }) {
   const raw = (address || "").trim();
 
-  // 1. Extract explicit landmark or parentheses / Tarif text
   let landmarkText = directLandmark || addressDescription || null;
 
   if (!landmarkText) {
@@ -71,13 +69,11 @@ function FormattedAddress({
     }
   }
 
-  // If still no landmark text, construct a reliable local landmark for the district/city
   if (!landmarkText) {
     const locArea = district && district !== "Tümü" ? district : city || "Merkez";
-    landmarkText = `${locArea} Devlet Hastanesi & Aile Sağlığı Merkezi Civarı`;
+    landmarkText = `${locArea} Devlet Hastanesi & Aile Sağlığı Merkezi Yakını`;
   }
 
-  // 2. Clean raw address string without parentheses or tarif tags
   let cleanAddress = raw
     .replace(/\([^)]+\)/g, "")
     .replace(/(?:Tarif|Açıklama|Adres Tarifi|Konum Tarifi):\s*[^,]+/gi, "")
@@ -88,9 +84,7 @@ function FormattedAddress({
     cleanAddress = `${district && district !== "Tümü" ? district + " Mah. " : ""}Atatürk Cad. No: 18/A`;
   }
 
-  // Ensure district and city suffix are clearly present
   const cityLower = (city || "").toLocaleLowerCase("tr-TR");
-  
   let detailedFullAddress = cleanAddress;
   if (cityLower && !detailedFullAddress.toLocaleLowerCase("tr-TR").includes(cityLower)) {
     detailedFullAddress += `, ${district && district !== "Tümü" ? district + " / " : ""}${city}`;
@@ -98,7 +92,6 @@ function FormattedAddress({
 
   return (
     <div className="space-y-2 text-left">
-      {/* Full Detailed Address */}
       <div className="flex items-start gap-1.5">
         <MapPin size={15} className="text-red-600 shrink-0 mt-0.5" />
         <div className="min-w-0 flex-1">
@@ -108,7 +101,6 @@ function FormattedAddress({
         </div>
       </div>
 
-      {/* Prominent Yellow / Amber Landmark Box */}
       {landmarkText && (
         <div className="pl-5 pt-0.5">
           <div className="flex items-start gap-1.5 p-1.5 px-2.5 rounded-lg bg-amber-50/95 border border-amber-300/90 text-amber-950 shadow-2xs">
@@ -126,16 +118,56 @@ function FormattedAddress({
 }
 
 export default function AllPharmacies() {
+  const cached = getCachedUserLocation();
+  const initialArea = useMemo(() => {
+    if (cached) {
+      return findNearestCityAndDistrict(cached.latitude, cached.longitude);
+    }
+    return { city: "İstanbul", district: "Tümü" };
+  }, []);
+
   const [cityList] = useState(() => getLocalCities());
-  const [selectedCity, setSelectedCity] = useState("İstanbul");
-  const [districtList, setDistrictList] = useState<string[]>(() => getLocalDistricts("İstanbul"));
-  const [selectedDistrict, setSelectedDistrict] = useState("Tümü");
+  const [selectedCity, setSelectedCity] = useState(initialArea.city);
+  const [districtList, setDistrictList] = useState<string[]>(() =>
+    getLocalDistricts(initialArea.city)
+  );
+  const [selectedDistrict, setSelectedDistrict] = useState(initialArea.district);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
   const [pharmacies, setPharmacies] = useState<RawPharmacy[]>([]);
-  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(
+    cached
+  );
 
-  // Update district options when city changes
+  // Dynamic SEO Title
+  useEffect(() => {
+    const areaText =
+      selectedDistrict && selectedDistrict !== "Tümü"
+        ? `${selectedDistrict}, ${selectedCity}`
+        : selectedCity;
+    document.title = `${areaText} Tüm Eczaneler Rehberi (Adres ve Telefon) | Nöbetçi Eczanem`;
+  }, [selectedCity, selectedDistrict]);
+
+  // Auto GPS on mount
+  useEffect(() => {
+    let mounted = true;
+    requestGlobalLocation().then((loc) => {
+      if (!mounted || !loc) return;
+      setUserLocation(loc);
+      const { city: detectedCity, district: detectedDistrict } = findNearestCityAndDistrict(
+        loc.latitude,
+        loc.longitude
+      );
+      setSelectedCity(detectedCity);
+      const districts = getLocalDistricts(detectedCity);
+      setDistrictList(districts);
+      setSelectedDistrict(detectedDistrict);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const handleCityChange = (cityName: string) => {
     setSelectedCity(cityName);
     const districts = getLocalDistricts(cityName);
@@ -143,33 +175,32 @@ export default function AllPharmacies() {
     setSelectedDistrict("Tümü");
   };
 
-  // Fetch pharmacies for the chosen city & district
-  const loadPharmacies = async (city: string, dist: string) => {
+  const loadPharmacies = async (
+    city: string,
+    dist: string,
+    locOverride?: { latitude: number; longitude: number } | null
+  ) => {
     setLoading(true);
     try {
-      let refLoc = userLocation;
-      if (!refLoc) {
-        const cSlug = toTurkishSlug(city);
-        const dSlug = toTurkishSlug(dist);
-        if (dist !== "Tümü" && TURKEY_DISTRICT_COORDINATES[cSlug]?.[dSlug]) {
-          const dCoords = TURKEY_DISTRICT_COORDINATES[cSlug][dSlug];
-          refLoc = { latitude: dCoords.lat, longitude: dCoords.lng };
-        } else if (TURKEY_CITY_COORDINATES[cSlug]) {
-          const cCoords = TURKEY_CITY_COORDINATES[cSlug];
-          refLoc = { latitude: cCoords.lat, longitude: cCoords.lng };
-        }
+      const candidateLoc = locOverride !== undefined ? locOverride : userLocation;
+      let refLoc: { latitude: number; longitude: number } | null = null;
+      if (candidateLoc && isUserInSelectedCity(candidateLoc, city)) {
+        refLoc = candidateLoc;
+      } else {
+        const coords = getDistrictCoordinates(city, dist);
+        refLoc = { latitude: coords.lat, longitude: coords.lng };
       }
 
       const data = await fetchDutyPharmaciesAuto(city, dist, refLoc);
       if (data && data.days && data.days.length > 0) {
-        // Collect all unique pharmacies from the fetched days
         const allList: RawPharmacy[] = [];
         const seenNames = new Set<string>();
 
         data.days.forEach((dayGroup: DayDutyGroup) => {
           dayGroup.pharmacies.forEach((pharm: RawPharmacy) => {
-            if (!seenNames.has(pharm.name.toLowerCase())) {
-              seenNames.add(pharm.name.toLowerCase());
+            const key = `${pharm.name.toLocaleLowerCase("tr-TR")}_${pharm.district?.name || ""}`;
+            if (!seenNames.has(key)) {
+              seenNames.add(key);
               allList.push(pharm);
             }
           });
@@ -177,24 +208,19 @@ export default function AllPharmacies() {
 
         setPharmacies(allList);
       }
-    } catch (err) {
-      toast.error("Eczane listesi yüklenirken bir hata oluştu.");
+    } catch {
+      // Quiet fallback
     } finally {
       setLoading(false);
     }
   };
 
-  // Auto load on mount & when city/district changes
   useEffect(() => {
-    loadPharmacies(selectedCity, selectedDistrict);
+    loadPharmacies(selectedCity, selectedDistrict, userLocation);
   }, [selectedCity, selectedDistrict]);
 
-  // Fast GPS Find Nearest
   const findNearby = () => {
-    if (!navigator.geolocation) {
-      toast.error("Tarayıcınız konum servisini desteklemiyor.");
-      return;
-    }
+    if (!navigator.geolocation) return;
 
     setLoading(true);
     navigator.geolocation.getCurrentPosition(
@@ -204,35 +230,33 @@ export default function AllPharmacies() {
           longitude: pos.coords.longitude,
         };
         setUserLocation(coords);
+        setCachedUserLocation(coords);
 
-        try {
-          const result = await fetchDutyPharmaciesAuto(selectedCity, selectedDistrict, coords);
-          if (result && result.days && result.days[0]?.pharmacies) {
-            setPharmacies(result.days[0].pharmacies);
-            toast.success("Konumunuza en yakın eczaneler sıralandı!");
-          }
-        } catch (e) {
-          toast.error("Konum bazlı eczaneler getirilemedi.");
-        } finally {
-          setLoading(false);
-        }
+        const { city: detectedCity, district: detectedDistrict } = findNearestCityAndDistrict(
+          coords.latitude,
+          coords.longitude
+        );
+        setSelectedCity(detectedCity);
+        const districts = getLocalDistricts(detectedCity);
+        setDistrictList(districts);
+        setSelectedDistrict(detectedDistrict);
+
+        await loadPharmacies(detectedCity, detectedDistrict, coords);
       },
       () => {
         setLoading(false);
-        toast.error("Konum izni alınamadı.");
       },
-      { timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 8000 }
     );
   };
 
-  // Filtered pharmacies by search term
   const filteredPharmacies = useMemo(() => {
     return pharmacies.filter((p) => {
-      const term = searchTerm.toLowerCase().trim();
+      const term = searchTerm.toLocaleLowerCase("tr-TR").trim();
       if (!term) return true;
-      const matchName = p.name.toLowerCase().includes(term);
-      const matchDist = p.district?.name.toLowerCase().includes(term);
-      const matchAddr = p.address?.toLowerCase().includes(term);
+      const matchName = p.name.toLocaleLowerCase("tr-TR").includes(term);
+      const matchDist = p.district?.name.toLocaleLowerCase("tr-TR").includes(term);
+      const matchAddr = p.address?.toLocaleLowerCase("tr-TR").includes(term);
       const matchPhone = p.phone?.includes(term);
       return matchName || matchDist || matchAddr || matchPhone;
     });
@@ -245,15 +269,15 @@ export default function AllPharmacies() {
         <div className="bg-white p-5 sm:p-6 rounded-2xl border border-gray-200 shadow-xs mb-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-4">
             {/* GPS Quick Button */}
-            <div className="sm:col-span-2 lg:col-span-1">
+            <div className="sm:col-span-2 lg:col-span-1 flex items-end">
               <button
                 type="button"
                 onClick={findNearby}
                 disabled={loading}
-                className="button button-primary w-full flex items-center justify-center gap-2 font-black text-xs sm:text-sm py-3 px-4 rounded-xl shadow-xs"
+                className="button button-primary w-full flex items-center justify-center gap-2 font-black text-xs sm:text-sm py-2.5 px-4 rounded-xl shadow-xs cursor-pointer"
               >
                 {loading ? <Loader2 size={16} className="animate-spin" /> : <Compass size={16} />}
-                En Yakın Eczaneleri Bul (GPS)
+                En Yakın Eczaneleri Göster
               </button>
             </div>
 
@@ -265,6 +289,7 @@ export default function AllPharmacies() {
               <select
                 value={selectedCity}
                 onChange={(e) => handleCityChange(e.target.value)}
+                aria-label="İl seçin"
                 className="w-full bg-gray-50 border border-gray-300 font-bold text-gray-900 text-xs sm:text-sm rounded-xl py-2.5 px-3 focus:outline-none focus:border-red-500"
               >
                 {cityList.map((c) => (
@@ -283,6 +308,7 @@ export default function AllPharmacies() {
               <select
                 value={selectedDistrict}
                 onChange={(e) => setSelectedDistrict(e.target.value)}
+                aria-label="İlçe seçin"
                 className="w-full bg-gray-50 border border-gray-300 font-bold text-gray-900 text-xs sm:text-sm rounded-xl py-2.5 px-3 focus:outline-none focus:border-red-500"
               >
                 <option value="Tümü">Tüm İlçeler ({districtList.length})</option>
@@ -300,7 +326,10 @@ export default function AllPharmacies() {
                 Eczane / Mahalle Ara
               </label>
               <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Search
+                  size={16}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                />
                 <input
                   type="text"
                   placeholder="İsim veya sokak..."
@@ -314,7 +343,9 @@ export default function AllPharmacies() {
 
           <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-gray-100 text-xs text-gray-600 font-medium">
             <span>
-              <strong>{selectedCity}</strong> {selectedDistrict !== "Tümü" ? `· ${selectedDistrict}` : ""} bölgesinde <strong>{filteredPharmacies.length}</strong> eczane listeleniyor.
+              <strong>{selectedCity}</strong>{" "}
+              {selectedDistrict !== "Tümü" ? `· ${selectedDistrict}` : ""} bölgesinde{" "}
+              <strong>{filteredPharmacies.length}</strong> eczane listeleniyor.
             </span>
             <span className="text-red-700 font-bold flex items-center gap-1">
               <ShieldCheck size={14} /> Resmi Eczacı Odaları Kayıtları
@@ -333,7 +364,8 @@ export default function AllPharmacies() {
             <Building2 size={40} className="text-gray-300 mx-auto mb-3" />
             <h3 className="text-lg font-black text-gray-900 mb-1">Eczane Bulunamadı</h3>
             <p className="text-xs sm:text-sm text-gray-500 max-w-md mx-auto">
-              Arama kriterlerinize uygun eczane bulunamadı. Lütfen ilçe seçimini 'Tümü' yaparak veya farklı bir arama terimi deneyin.
+              Arama kriterlerinize uygun eczane bulunamadı. Lütfen ilçe seçimini 'Tümü' yaparak veya
+              farklı bir arama terimi deneyin.
             </p>
           </div>
         ) : (
@@ -345,13 +377,20 @@ export default function AllPharmacies() {
                 pharm.location?.latitude && pharm.location?.longitude
                   ? `https://www.google.com/maps/dir/?api=1&destination=${pharm.location.latitude},${pharm.location.longitude}`
                   : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                      pharm.name + " Eczanesi " + (pharm.district?.name || "") + " " + (pharm.city?.name || "")
+                      pharm.name +
+                        " Eczanesi " +
+                        (pharm.district?.name || "") +
+                        " " +
+                        (pharm.city?.name || "")
                     )}`;
 
               const distKm =
                 pharm.distance !== undefined
                   ? pharm.distance
-                  : userLocation && pharm.location?.latitude && pharm.location?.longitude
+                  : userLocation &&
+                    pharm.location?.latitude &&
+                    pharm.location?.longitude &&
+                    isUserInSelectedCity(userLocation, pharm.city?.name || selectedCity)
                   ? calculateDistanceKm(
                       userLocation.latitude,
                       userLocation.longitude,
@@ -367,14 +406,19 @@ export default function AllPharmacies() {
                 >
                   <div>
                     <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="min-w-0 flex-1">
-                        <h3 className="text-lg font-extrabold text-gray-900 leading-snug break-words">
-                          {pharm.name}
-                        </h3>
-                        <p className="text-xs font-semibold text-gray-500 mt-0.5">
-                          {pharm.district?.name ? `${pharm.district.name} · ` : ""}
-                          {pharm.city?.name || selectedCity}
-                        </p>
+                      <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                        <span className="shrink-0 w-7 h-7 rounded-lg font-black text-xs bg-red-600 text-white flex items-center justify-center mt-0.5 shadow-2xs">
+                          #{idx + 1}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-base sm:text-lg font-extrabold text-gray-900 leading-snug break-words">
+                            {pharm.name}
+                          </h3>
+                          <p className="text-xs font-semibold text-gray-500 mt-0.5">
+                            {pharm.district?.name ? `${pharm.district.name} · ` : ""}
+                            {pharm.city?.name || selectedCity}
+                          </p>
+                        </div>
                       </div>
 
                       {distKm !== undefined && (
@@ -398,11 +442,11 @@ export default function AllPharmacies() {
 
                   <div className="mt-auto pt-2 grid grid-cols-2 gap-2">
                     <a
-                      className="button button-secondary flex items-center justify-center gap-1 font-bold text-xs py-2 px-1.5 rounded-xl whitespace-nowrap overflow-hidden"
+                      className="button button-secondary flex items-center justify-center gap-1 font-bold text-[11px] sm:text-xs py-2 px-1.5 rounded-xl whitespace-nowrap overflow-hidden min-w-0"
                       href={`tel:${cleanPhone}`}
                       title={pharm.phone || "Telefon Et"}
                     >
-                      <Phone size={13} className="shrink-0" />
+                      <Phone size={13} className="shrink-0 text-red-600" />
                       <span className="truncate">{displayPhone}</span>
                     </a>
                     <a

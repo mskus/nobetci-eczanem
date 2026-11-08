@@ -15,18 +15,12 @@ import {
   Pill,
   Building2,
   Phone,
-  Radio,
   Syringe,
   ShieldAlert,
   FileText,
+  Calculator,
+  Wind,
 } from "lucide-react";
-import { QuotaBadge } from "./QuotaBadge";
-import { useQuota } from "@/hooks/useQuota";
-import { startLocationUpdates } from "@/lib/globalLocation";
-
-const appVersion = import.meta.env.VITE_APP_VERSION || "geliştirme";
-const gitSha = import.meta.env.VITE_GIT_SHA || "";
-const commitUrl = gitSha ? `https://github.com/mskus/nobetci-eczanem/commit/${gitSha}` : "https://github.com/mskus/nobetci-eczanem";
 
 type SiteLayoutProps = {
   children: React.ReactNode;
@@ -34,8 +28,10 @@ type SiteLayoutProps = {
 
 export function Brand() {
   return (
-    <Link href="/" className="brand" aria-label="Nöbetçi Eczanem ana sayfa">
-      <span className="brand-mark" aria-hidden="true"><Plus strokeWidth={3.2} /></span>
+    <Link href="/" className="brand shrink-0" aria-label="Nöbetçi Eczanem ana sayfa">
+      <span className="brand-mark" aria-hidden="true">
+        <Plus strokeWidth={3.2} />
+      </span>
       <span className="brand-copy">
         <strong>Nöbetçi</strong>
         <span>Eczanem</span>
@@ -47,25 +43,22 @@ export function Brand() {
 export default function SiteLayout({ children }: SiteLayoutProps) {
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { quota } = useQuota();
 
   useEffect(() => {
     setMobileOpen(false);
   }, [location]);
 
-  useEffect(() => { startLocationUpdates(); }, []);
-
   return (
     <div className="site-shell">
-      <header className="site-header relative z-40">
+      <header className="site-header sticky top-0 z-40">
         <div className="header-inner">
           <Brand />
-          
-          <nav className="desktop-nav flex items-center gap-1.5" aria-label="Ana navigasyon">
-            {/* 1. Nöbetçi Eczaneler — Canlı Yeşil Efektli */}
+
+          <nav className="desktop-nav flex items-center gap-1" aria-label="Ana navigasyon">
+            {/* 1. Nöbetçi Eczaneler */}
             <Link
               href="/"
-              className={`relative px-3 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-1.5 ${
+              className={`relative px-2.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
                 location === "/"
                   ? "bg-red-600 text-white shadow-xs"
                   : "text-gray-800 hover:bg-gray-100 hover:text-gray-950"
@@ -73,31 +66,42 @@ export default function SiteLayout({ children }: SiteLayoutProps) {
             >
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0" />
               <span>Nöbetçi Eczaneler</span>
-              <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-1.5 py-0.2 rounded border border-emerald-300">
+              <span
+                className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded border ${
+                  location === "/"
+                    ? "bg-red-800 text-white border-red-400"
+                    : "bg-emerald-100 text-emerald-800 border-emerald-300"
+                }`}
+              >
                 CANLI
               </span>
             </Link>
 
-            {/* 2. En Yakın Hastane — Acil Kırmızı Efektli */}
+            {/* 2. En Yakın Hastane */}
             <Link
               href="/en-yakin-hastane"
-              className={`relative px-3 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-1.5 ${
+              className={`relative px-2.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
                 location === "/en-yakin-hastane"
                   ? "bg-red-700 text-white shadow-xs"
                   : "text-red-700 bg-red-50/90 border border-red-200 hover:bg-red-100"
               }`}
             >
-              <HeartPulse size={15} className="text-red-600 animate-pulse shrink-0" />
+              <HeartPulse
+                size={14}
+                className={`shrink-0 ${
+                  location === "/en-yakin-hastane" ? "text-white" : "text-red-600 animate-pulse"
+                }`}
+              />
               <span>En Yakın Hastane</span>
               <span className="text-[10px] bg-red-600 text-white font-extrabold px-1.5 py-0.2 rounded shadow-2xs">
-                KONUM
+                7/24 ACİL
               </span>
             </Link>
 
-            {/* 3. Sağlık Portalı & Araçlar — SGK, Polen, TİTCK, Etkileşim */}
+            {/* 3. Sağlık Portalı & Araçlar */}
             <Link
               href="/saglik-araclari"
-              className={`px-3 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-1.5 ${
+              className={`px-2.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
                 location.startsWith("/saglik-araclari") ||
                 location.startsWith("/sgk-katki-payi") ||
                 location.startsWith("/hava-kalitesi") ||
@@ -109,56 +113,56 @@ export default function SiteLayout({ children }: SiteLayoutProps) {
                   : "text-emerald-900 bg-emerald-50/80 border border-emerald-200 hover:bg-emerald-100"
               }`}
             >
-              <Activity size={15} className="text-emerald-600 shrink-0" />
+              <Activity size={14} className="shrink-0" />
               <span>Sağlık Portalı</span>
               <span className="text-[10px] bg-emerald-600 text-white font-extrabold px-1.5 py-0.2 rounded">
-                YENİ
+                ARAÇLAR
               </span>
             </Link>
 
             {/* 4. Türkiye'de Sağlık (WHO) */}
             <Link
               href="/turkiyede-saglik"
-              className={`px-3 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-1.5 ${
+              className={`px-2.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
                 location === "/turkiyede-saglik"
                   ? "bg-cyan-800 text-white shadow-xs"
                   : "text-gray-800 hover:bg-gray-100"
               }`}
             >
-              <Globe2 size={15} className="text-cyan-700 shrink-0" />
+              <Globe2 size={14} className="text-cyan-700 shrink-0" />
               <span>Türkiye'de Sağlık</span>
             </Link>
 
             {/* 5. Tüm Eczaneler */}
             <Link
               href="/tum-eczaneler"
-              className={`px-3 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-1.5 ${
+              className={`px-2.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
                 location === "/tum-eczaneler"
                   ? "bg-gray-900 text-white shadow-xs"
                   : "text-gray-800 hover:bg-gray-100"
               }`}
             >
-              <Building2 size={15} className="text-gray-600 shrink-0" />
+              <Building2 size={14} className="text-gray-600 shrink-0" />
               <span>Tüm Eczaneler</span>
             </Link>
 
             {/* 6. İlaç & Sağlık Rehberi */}
             <Link
               href="/blog"
-              className={`px-3 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-1.5 ${
+              className={`px-2.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
                 location === "/blog"
                   ? "bg-gray-900 text-white shadow-xs"
                   : "text-gray-800 hover:bg-gray-100"
               }`}
             >
-              <Pill size={15} className="text-amber-600 shrink-0" />
-              <span>İlaç & Sağlık Rehberi</span>
+              <Pill size={14} className="text-amber-600 shrink-0" />
+              <span>İlaç Rehberi</span>
             </Link>
 
-            {/* 7. Reklam & İletişim */}
+            {/* 7. İletişim */}
             <Link
               href="/reklam-ver"
-              className={`px-3 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-1.5 ${
+              className={`px-2.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
                 location === "/reklam-ver" || location === "/iletisim"
                   ? "bg-gray-900 text-white shadow-xs"
                   : "text-gray-700 hover:bg-gray-100"
@@ -171,75 +175,152 @@ export default function SiteLayout({ children }: SiteLayoutProps) {
           <div className="header-actions flex items-center gap-2">
             <button
               type="button"
-              className="mobile-menu-button"
+              className="mobile-menu-button cursor-pointer"
               aria-expanded={mobileOpen}
               aria-controls="mobile-navigation"
               aria-label={mobileOpen ? "Menüyü kapat" : "Menüyü aç"}
               onClick={() => setMobileOpen((open) => !open)}
             >
-              {mobileOpen ? <X size={28} /> : <Menu size={28} />}
+              {mobileOpen ? <X size={26} /> : <Menu size={26} />}
             </button>
           </div>
         </div>
 
-        {/* Mobil Menü Top Drawer */}
+        {/* Mobil Menü Top Drawer - Zenginleştirilmiş Seçenekler */}
         {mobileOpen && (
-          <nav id="mobile-navigation" className="mobile-nav p-4 space-y-2.5 bg-white border-b border-gray-200 max-h-[80vh] overflow-y-auto" aria-label="Mobil navigasyon">
-            <Link href="/" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center justify-between font-black text-red-600">
+          <nav
+            id="mobile-navigation"
+            className="mobile-nav p-4 space-y-1.5 bg-white border-b border-gray-200 max-h-[82vh] overflow-y-auto"
+            aria-label="Mobil navigasyon"
+          >
+            <Link
+              href="/"
+              onClick={() => setMobileOpen(false)}
+              className="mobile-nav-link flex items-center justify-between font-black text-red-600"
+            >
               <span className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
-                Nöbetçi Eczaneler
+                Nöbetçi Eczaneler (81 İl)
               </span>
-              <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-extrabold">CANLI</span>
+              <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-extrabold">
+                CANLI
+              </span>
             </Link>
-            <Link href="/en-yakin-hastane" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center justify-between font-black text-red-700">
+
+            <Link
+              href="/en-yakin-hastane"
+              onClick={() => setMobileOpen(false)}
+              className="mobile-nav-link flex items-center justify-between font-black text-red-700"
+            >
               <span className="flex items-center gap-2">
                 <HeartPulse size={16} />
-                En Yakın Hastane & ASM
+                En Yakın Hastane, ASM & Kabin
               </span>
-              <span className="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded font-extrabold">KONUM</span>
+              <span className="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded font-extrabold">
+                7/24 ACİL
+              </span>
             </Link>
-            <Link href="/saglik-araclari" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center justify-between font-black text-emerald-700">
+
+            <Link
+              href="/tum-eczaneler"
+              onClick={() => setMobileOpen(false)}
+              className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800"
+            >
+              <Building2 size={16} className="text-gray-700" />
+              Tüm Eczaneler Rehberi
+            </Link>
+
+            <Link
+              href="/sgk-katki-payi-hesaplayici"
+              onClick={() => setMobileOpen(false)}
+              className="mobile-nav-link flex items-center justify-between font-bold text-emerald-800"
+            >
               <span className="flex items-center gap-2">
-                <Activity size={16} />
-                Sağlık Portalı & SGK Araçları
+                <Calculator size={16} className="text-emerald-600" />
+                SGK İlaç Katkı Payı Hesaplama
               </span>
-              <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded font-extrabold">YENİ</span>
+              <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded font-extrabold">
+                POPÜLER
+              </span>
             </Link>
-            <Link href="/kan-bagisi" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800">
-              <Syringe size={16} className="text-blue-600" />
-              Kan Bağışı & İlk Yardım Merkezleri
+
+            <Link
+              href="/hava-kalitesi-polen"
+              onClick={() => setMobileOpen(false)}
+              className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800"
+            >
+              <Wind size={16} className="text-cyan-600" />
+              Polen & Hava Kalitesi İndeksi
             </Link>
-            <Link href="/titck-ilac-geri-cekme" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800">
+
+            <Link
+              href="/titck-ilac-geri-cekme"
+              onClick={() => setMobileOpen(false)}
+              className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800"
+            >
               <ShieldAlert size={16} className="text-amber-600" />
-              TİTCK İlaç Geri Çekme & Uyarılar
+              TİTCK İlaç Geri Çekme Bülteni
             </Link>
-            <Link href="/sgk-katki-payi-hesaplayici" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800">
-              <Pill size={16} className="text-emerald-700" /> SGK Katkı Payı Hesaplayıcı
+
+            <Link
+              href="/ilac-etkilesim"
+              onClick={() => setMobileOpen(false)}
+              className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800"
+            >
+              <Pill size={16} className="text-indigo-600" />
+              İlaç & Besin Etkileşim Testi
             </Link>
-            <Link href="/hava-kalitesi-polen" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800">
-              <Activity size={16} className="text-cyan-700" /> Hava Kalitesi ve Polen
+
+            <Link
+              href="/kan-bagisi"
+              onClick={() => setMobileOpen(false)}
+              className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800"
+            >
+              <Syringe size={16} className="text-red-600" />
+              Kızılay Kan Bağış Noktaları
             </Link>
-            <Link href="/ilk-yardim" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800">
-              <HeartPulse size={16} className="text-red-700" /> İlk Yardım Rehberi
+
+            <Link
+              href="/ilk-yardim"
+              onClick={() => setMobileOpen(false)}
+              className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800"
+            >
+              <Activity size={16} className="text-rose-600" />
+              7/24 Acil İlk Yardım Rehberi
             </Link>
-            <Link href="/turkiyede-saglik" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800">
+
+            <Link
+              href="/turkiyede-saglik"
+              onClick={() => setMobileOpen(false)}
+              className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800"
+            >
               <Globe2 size={16} className="text-cyan-700" />
-              Türkiye'de Sağlık İstatistikleri
+              Türkiye'de Sağlık (WHO & UNICEF)
             </Link>
-            <Link href="/tum-eczaneler" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800">
-              <Building2 size={16} className="text-gray-600" />
-              Tüm Eczaneler & Hızlı Arama
+
+            <Link
+              href="/blog"
+              onClick={() => setMobileOpen(false)}
+              className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800"
+            >
+              <FileText size={16} className="text-amber-600" />
+              İlaç Fiyatları & Sağlık Makaleleri
             </Link>
-            <Link href="/blog" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800">
-              <Pill size={16} className="text-amber-600" />
-              İlaç Fiyatları & Sağlık Rehberi
+
+            <Link
+              href="/veri-kaynaklari"
+              onClick={() => setMobileOpen(false)}
+              className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800"
+            >
+              <ShieldCheck size={16} className="text-indigo-600" />
+              Resmi Veri Kaynakları & API
             </Link>
-            <Link href="/veri-kaynaklari" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800">
-              <FileText size={16} className="text-indigo-600" />
-              Resmi Veri Kaynakları (TİTCK & AFAD)
-            </Link>
-            <Link href="/reklam-ver" onClick={() => setMobileOpen(false)} className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800">
+
+            <Link
+              href="/reklam-ver"
+              onClick={() => setMobileOpen(false)}
+              className="mobile-nav-link flex items-center gap-2 font-bold text-gray-800"
+            >
               <Phone size={16} className="text-gray-600" />
               Reklam & İletişim
             </Link>
@@ -247,51 +328,76 @@ export default function SiteLayout({ children }: SiteLayoutProps) {
         )}
       </header>
 
-      <div className="pb-20 md:pb-0">
-        {children}
-      </div>
+      <div className="pb-20 lg:pb-0">{children}</div>
 
-      {/* Modern Mobil Alt Kayan Navigasyon Barı (Mobile Bottom Floating Navigation) */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200 px-2 py-1.5 flex items-center justify-around shadow-2xl" aria-label="Mobil alt navigasyon">
+      {/* Modern Mobil Alt Kayan Navigasyon Barı (5 Seçenekli) */}
+      <nav
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200 px-1.5 py-1.5 grid grid-cols-5 items-center shadow-2xl"
+        aria-label="Mobil alt navigasyon"
+      >
         <Link
           href="/"
-          className={`flex flex-col items-center justify-center gap-0.5 py-1 px-2.5 rounded-xl transition-all ${
-            location === "/" ? "text-red-600 font-black" : "text-slate-500 font-bold hover:text-slate-900"
+          className={`flex flex-col items-center justify-center gap-0.5 py-1 px-1 rounded-xl transition-all ${
+            location === "/"
+              ? "text-red-600 font-black"
+              : "text-slate-500 font-bold hover:text-slate-900"
           }`}
         >
           <div className="relative">
             <Plus className="w-5 h-5 stroke-[2.8]" />
             <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
           </div>
-          <span className="text-[10px] tracking-tight">Eczaneler</span>
+          <span className="text-[10px] tracking-tight truncate">Nöbetçi</span>
         </Link>
 
         <Link
           href="/en-yakin-hastane"
-          className={`flex flex-col items-center justify-center gap-0.5 py-1 px-2.5 rounded-xl transition-all ${
-            location === "/en-yakin-hastane" ? "text-red-600 font-black" : "text-slate-500 font-bold hover:text-slate-900"
+          className={`flex flex-col items-center justify-center gap-0.5 py-1 px-1 rounded-xl transition-all ${
+            location === "/en-yakin-hastane"
+              ? "text-red-600 font-black"
+              : "text-slate-500 font-bold hover:text-slate-900"
           }`}
         >
           <HeartPulse className="w-5 h-5" />
-          <span className="text-[10px] tracking-tight">Hastaneler</span>
+          <span className="text-[10px] tracking-tight truncate">Hastane</span>
+        </Link>
+
+        <Link
+          href="/tum-eczaneler"
+          className={`flex flex-col items-center justify-center gap-0.5 py-1 px-1 rounded-xl transition-all ${
+            location === "/tum-eczaneler"
+              ? "text-gray-900 font-black"
+              : "text-slate-500 font-bold hover:text-slate-900"
+          }`}
+        >
+          <Building2 className="w-5 h-5" />
+          <span className="text-[10px] tracking-tight truncate">Eczaneler</span>
         </Link>
 
         <Link
           href="/saglik-araclari"
-          className={`flex flex-col items-center justify-center gap-0.5 py-1 px-2.5 rounded-xl transition-all ${
-            location.startsWith("/saglik-araclari") ? "text-emerald-700 font-black" : "text-slate-500 font-bold hover:text-slate-900"
+          className={`flex flex-col items-center justify-center gap-0.5 py-1 px-1 rounded-xl transition-all ${
+            location.startsWith("/saglik-araclari") ||
+            location.startsWith("/sgk-katki-payi") ||
+            location.startsWith("/hava-kalitesi") ||
+            location.startsWith("/titck")
+              ? "text-emerald-700 font-black"
+              : "text-slate-500 font-bold hover:text-slate-900"
           }`}
         >
           <Activity className="w-5 h-5 text-emerald-600" />
-          <span className="text-[10px] tracking-tight">Portali</span>
+          <span className="text-[10px] tracking-tight truncate">Araçlar</span>
         </Link>
 
         <button
+          type="button"
           onClick={() => setMobileOpen((open) => !open)}
-          className="flex flex-col items-center justify-center gap-0.5 py-1 px-2.5 rounded-xl text-slate-500 font-bold hover:text-slate-900 cursor-pointer"
+          className={`flex flex-col items-center justify-center gap-0.5 py-1 px-1 rounded-xl cursor-pointer ${
+            mobileOpen ? "text-red-600 font-black" : "text-slate-500 font-bold hover:text-slate-900"
+          }`}
         >
-          <Menu className="w-5 h-5" />
-          <span className="text-[10px] tracking-tight">Menü</span>
+          {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          <span className="text-[10px] tracking-tight truncate">Tüm Menü</span>
         </button>
       </nav>
 
@@ -301,41 +407,77 @@ export default function SiteLayout({ children }: SiteLayoutProps) {
             <div className="md:col-span-2 space-y-3">
               <Brand />
               <p className="text-xs sm:text-sm text-gray-400 max-w-md leading-relaxed">
-                Nöbetçi Eczanem, ulaşılabildiğinde nöbetçi eczane kayıtlarını ve harita kaynaklı hastane konumlarını gösterir. Bilgileri gitmeden önce telefonla teyit edin.
+                Nöbetçi Eczanem; Türkiye genelinde 81 il ve 973 ilçede açık olan nöbetçi eczaneleri,
+                7/24 acil hastaneleri, SGK katkı payı hesaplayıcıyı, polen & hava indeksini, TİTCK
+                ilaç geri çekme bültenlerini ve WHO sağlık göstergelerini tek ekranda sunan bağımsız
+                sağlık portalıdır.
               </p>
             </div>
 
             <div>
-              <h4 className="text-xs font-black uppercase tracking-wider text-gray-400 mb-3">Sağlık Portalı & Servisler</h4>
+              <h4 className="text-xs font-black uppercase tracking-wider text-gray-400 mb-3">
+                Sağlık Portalı & Servisler
+              </h4>
               <div className="flex flex-col space-y-2 text-xs font-semibold text-gray-300">
-                <Link href="/" className="hover:text-red-400">Nöbetçi Eczaneler (Canlı)</Link>
-                <Link href="/en-yakin-hastane" className="hover:text-red-400">En Yakın Hastane & ASM</Link>
-                <Link href="/saglik-araclari" className="hover:text-emerald-400">SGK Katkı Payı Hesaplayıcı</Link>
-                <Link href="/saglik-araclari" className="hover:text-cyan-400">Polen & Hava Kalitesi İndeksi</Link>
-                <Link href="/saglik-araclari" className="hover:text-amber-400">TİTCK İlaç Geri Çekme Bülteni</Link>
-                <Link href="/saglik-araclari" className="hover:text-red-400">Kızılay Kan Bağış Noktaları</Link>
-                <Link href="/turkiyede-saglik" className="hover:text-cyan-400">Türkiye'de Sağlık (WHO)</Link>
+                <Link href="/" className="hover:text-red-400">
+                  Nöbetçi Eczaneler (Canlı)
+                </Link>
+                <Link href="/en-yakin-hastane" className="hover:text-red-400">
+                  En Yakın Hastane & ASM
+                </Link>
+                <Link href="/tum-eczaneler" className="hover:text-white">
+                  81 İl Tüm Eczaneler Rehberi
+                </Link>
+                <Link href="/sgk-katki-payi-hesaplayici" className="hover:text-emerald-400">
+                  SGK Katkı Payı Hesaplayıcı
+                </Link>
+                <Link href="/hava-kalitesi-polen" className="hover:text-cyan-400">
+                  Polen & Hava Kalitesi İndeksi
+                </Link>
+                <Link href="/titck-ilac-geri-cekme" className="hover:text-amber-400">
+                  TİTCK İlaç Geri Çekme Bülteni
+                </Link>
+                <Link href="/kan-bagisi" className="hover:text-red-400">
+                  Kızılay Kan Bağış Noktaları
+                </Link>
+                <Link href="/turkiyede-saglik" className="hover:text-cyan-400">
+                  Türkiye'de Sağlık (WHO & UNICEF)
+                </Link>
               </div>
             </div>
 
             <div>
-              <h4 className="text-xs font-black uppercase tracking-wider text-gray-400 mb-3">Kurumsal & Altyapı</h4>
+              <h4 className="text-xs font-black uppercase tracking-wider text-gray-400 mb-3">
+                Kurumsal & Altyapı
+              </h4>
               <div className="flex flex-col space-y-2 text-xs font-semibold text-gray-300">
-                <Link href="/reklam-ver" className="hover:text-white">Reklam & Tanıtım</Link>
-                <Link href="/iletisim" className="hover:text-white">Bize Ulaşın / Destek</Link>
-                <Link href="/veri-kaynaklari" className="text-gray-400 hover:text-white">Veri Kaynakları & API</Link>
+                <Link href="/blog" className="hover:text-white">
+                  İlaç & Sağlık Rehberi (Blog)
+                </Link>
+                <Link href="/reklam-ver" className="hover:text-white">
+                  Reklam & Sponsorluk
+                </Link>
+                <Link href="/iletisim" className="hover:text-white">
+                  Bize Ulaşın / Destek
+                </Link>
+                <Link href="/veri-kaynaklari" className="text-gray-400 hover:text-white">
+                  Veri Kaynakları & API
+                </Link>
               </div>
             </div>
           </div>
 
           <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500">
-            <span>© 2026 Nöbetçi Eczanem · Sağlık Bakanlığı ve TEB Esaslarına Uygun Bilgilendirme</span>
+            <span>
+              © 2026 Nöbetçi Eczanem · Sağlık Bakanlığı ve TEB Esaslarına Uygun Bilgilendirme
+            </span>
             <div className="flex items-center gap-4 text-[11px]">
-              <a href={commitUrl} target="_blank" rel="noreferrer" className="hover:text-gray-300 underline" title={gitSha || "GitHub deposu"}>
-                Sürüm {appVersion}{gitSha ? ` · ${gitSha.slice(0, 7)}` : ""}
-              </a>
-              <Link href="/veri-kaynaklari" className="hover:text-gray-300 underline">Veri Kaynakları & Tüketim</Link>
-              <Link href="/iletisim" className="hover:text-gray-300 underline">İletişim & Geri Bildirim</Link>
+              <Link href="/veri-kaynaklari" className="hover:text-gray-300 underline">
+                Veri Kaynakları & Tüketim
+              </Link>
+              <Link href="/iletisim" className="hover:text-gray-300 underline">
+                İletişim & Geri Bildirim
+              </Link>
             </div>
           </div>
         </div>
@@ -395,9 +537,7 @@ export function AdRail({ side }: { side: "left" | "right" }) {
           <Download size={14} />
           <span>ÜCRETSİZ İNDİR</span>
         </Link>
-        <span className="text-[10px] text-gray-400 block">
-          App Store & Google Play
-        </span>
+        <span className="text-[10px] text-gray-400 block">App Store & Google Play</span>
       </div>
     </aside>
   );
@@ -413,30 +553,38 @@ export function MobileAd() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <strong className="text-sm font-black text-white">Nöbetçi Eczanem Web</strong>
+              <strong className="text-sm font-black text-white">Nöbetçi Eczanem Mobil</strong>
               <span className="text-[10px] font-bold bg-red-900/80 text-red-200 px-1.5 py-0.2 rounded border border-red-700">
                 ÜCRETSİZ
               </span>
             </div>
             <p className="text-xs text-gray-300">
-              Telefonunuzun tarayıcısından eczane ve hastane araması yapın.
+              7/24 Acil nöbetçi eczaneler, en yakın hastaneler ve sesli navigasyon cebinizde!
             </p>
           </div>
         </div>
 
         <Link
-          href="/"
+          href="/reklam-ver"
           className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white font-black text-xs py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 shrink-0"
         >
           <Download size={14} />
-          <span>Eczaneleri Gör</span>
+          <span>Uygulamayı İndir</span>
         </Link>
       </div>
     </div>
   );
 }
 
-export function PageIntro({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
+export function PageIntro({
+  eyebrow,
+  title,
+  description,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+}) {
   return (
     <section className="page-intro py-4">
       <div className="container">
@@ -448,12 +596,22 @@ export function PageIntro({ eyebrow, title, description }: { eyebrow: string; ti
   );
 }
 
-export function SectionHeading({ eyebrow, title, description }: { eyebrow: string; title: string; description?: string }) {
+export function SectionHeading({
+  eyebrow,
+  title,
+  description,
+}: {
+  eyebrow: string;
+  title: string;
+  description?: string;
+}) {
   return (
     <div className="section-heading mb-4">
       <p className="eyebrow uppercase font-bold text-red-600 text-xs tracking-wider">{eyebrow}</p>
       <h2 className="text-xl sm:text-2xl font-black text-gray-900 mt-1">{title}</h2>
-      {description && <p className="text-xs sm:text-sm text-gray-600 mt-0.5 max-w-2xl">{description}</p>}
+      {description && (
+        <p className="text-xs sm:text-sm text-gray-600 mt-0.5 max-w-2xl">{description}</p>
+      )}
     </div>
   );
 }

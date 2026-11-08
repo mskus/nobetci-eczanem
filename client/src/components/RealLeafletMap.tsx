@@ -1,8 +1,7 @@
 import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { MapPin } from "lucide-react";
-import { formatDistance } from "@/lib/turkeyGeoData";
+import { formatDistance, calculateDistanceKm } from "@/lib/turkeyGeoData";
 
 export interface PharmacyLocation {
   latitude: number | null;
@@ -34,36 +33,42 @@ export function RealLeafletMap({
   pharmacies,
   selectedPharmacy,
   onSelect,
-  areaTitle,
   userLocation,
 }: RealLeafletMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
   const userMarkerRef = useRef<L.Marker | null>(null);
+  const prevPharmaciesSigRef = useRef<string>("");
 
-  // Initialize map
+  // Initialize map & attach ResizeObserver so container never clips or shifts center
   useEffect(() => {
-    if (!mapContainerRef.current) return;
+    const container = mapContainerRef.current;
+    if (!container) return;
 
     if (!mapInstanceRef.current) {
-      const map = L.map(mapContainerRef.current, {
-        center: [39.0, 35.0], // Turkey center
+      const map = L.map(container, {
+        center: [39.9208, 32.8541],
         zoom: 6,
-        scrollWheelZoom: true,
+        scrollWheelZoom: false,
+        attributionControl: true,
       });
 
-      // OpenStreetMap standard tile layer
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
         maxZoom: 19,
       }).addTo(map);
 
       mapInstanceRef.current = map;
     }
 
+    const resizeObserver = new ResizeObserver(() => {
+      mapInstanceRef.current?.invalidateSize();
+    });
+    resizeObserver.observe(container);
+
     return () => {
-      // Keep map instance alive across quick re-renders
+      resizeObserver.disconnect();
     };
   }, []);
 
@@ -107,21 +112,37 @@ export function RealLeafletMap({
     }
   }, [userLocation]);
 
-  // Update markers and bounds when pharmacies change
+  // Update markers and bounds when pharmacies or selectedPharmacy change
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
 
-    // Clear old markers
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
 
     const bounds = L.latLngBounds([]);
     let validCoordsCount = 0;
 
-    if (userLocation?.latitude && userLocation?.longitude) {
-      bounds.extend([userLocation.latitude, userLocation.longitude]);
-      validCoordsCount++;
+    // Check if userLocation is in the same region (<= 85 km from first valid pharmacy)
+    const firstValid = pharmacies.find(
+      (p) => p.location?.latitude && p.location?.longitude
+    );
+    if (
+      userLocation?.latitude &&
+      userLocation?.longitude &&
+      firstValid?.location?.latitude &&
+      firstValid?.location?.longitude
+    ) {
+      const distToUser = calculateDistanceKm(
+        userLocation.latitude,
+        userLocation.longitude,
+        firstValid.location.latitude,
+        firstValid.location.longitude
+      );
+      if (distToUser <= 85) {
+        bounds.extend([userLocation.latitude, userLocation.longitude]);
+        validCoordsCount++;
+      }
     }
 
     pharmacies.forEach((pharmacy, index) => {
@@ -132,15 +153,15 @@ export function RealLeafletMap({
       validCoordsCount++;
       const isSelected = index === selectedPharmacy;
 
-      // Custom red medical cross pin
+      // Custom numbered red medical pin matching card #index+1
       const iconHtml = `
         <div style="
-          width: 34px;
-          height: 34px;
+          width: ${isSelected ? "36px" : "30px"};
+          height: ${isSelected ? "36px" : "30px"};
           border-radius: 50% 50% 50% 0;
           transform: rotate(-45deg);
           background: ${isSelected ? "#991b1b" : "#dc2626"};
-          border: 3px solid #ffffff;
+          border: 2.5px solid #ffffff;
           box-shadow: 0 3px 8px rgba(0,0,0,0.35);
           display: flex;
           align-items: center;
@@ -152,36 +173,41 @@ export function RealLeafletMap({
             transform: rotate(45deg);
             color: #ffffff;
             font-weight: 900;
-            font-size: 17px;
+            font-size: ${isSelected ? "13px" : "11px"};
             line-height: 1;
-          ">+</span>
+          ">${index + 1}</span>
         </div>
       `;
 
+      const size = isSelected ? 36 : 30;
       const customIcon = L.divIcon({
         className: "custom-leaflet-marker",
         html: iconHtml,
-        iconSize: [34, 34],
-        iconAnchor: [17, 34],
-        popupAnchor: [0, -34],
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size],
+        popupAnchor: [0, -size],
       });
 
-      const marker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
+      const marker = L.marker([lat, lng], {
+        icon: customIcon,
+        zIndexOffset: isSelected ? 800 : 100,
+      }).addTo(map);
 
       const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-      const distanceBadge = pharmacy.distance !== undefined
-        ? `<div style="display: inline-block; background: #fee2e2; color: #991b1b; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 800; margin-bottom: 4px;">📍 ${formatDistance(pharmacy.distance)}</div>`
-        : "";
+      const distanceBadge =
+        pharmacy.distance !== undefined
+          ? `<div style="display: inline-block; background: #fee2e2; color: #991b1b; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 800; margin-bottom: 4px;">📍 ${formatDistance(pharmacy.distance)}</div>`
+          : "";
 
       const popupHtml = `
-        <div style="font-family: inherit; padding: 4px; min-width: 170px;">
-          <div style="color: #dc2626; font-size: 10px; font-weight: 800; text-transform: uppercase;">Nöbetçi Eczane</div>
-          <div style="font-size: 14px; font-weight: 800; color: #111; margin: 2px 0;">${pharmacy.name.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] || character)}</div>
+        <div style="font-family: inherit; padding: 4px; min-width: 175px;">
+          <div style="color: #dc2626; font-size: 10px; font-weight: 800; text-transform: uppercase;">#${index + 1} · Nöbetçi Eczane</div>
+          <div style="font-size: 13px; font-weight: 800; color: #111; margin: 2px 0;">${pharmacy.name}</div>
           ${distanceBadge}
-          <div style="font-size: 11px; color: #666; margin-bottom: 6px;">${(pharmacy.address || pharmacy.district?.name || "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] || character)}</div>
-          <div style="display: flex; gap: 8px;">
-            <a href="tel:${pharmacy.phone.replace(/[^0-9+]/g, "")}" style="display: inline-block; background: #fdebec; color: #dc2626; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-decoration: none;">Ara</a>
-            <a href="${mapsUrl}" target="_blank" rel="noreferrer" style="display: inline-block; background: #dc2626; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-decoration: none;">Yol Tarifi</a>
+          <div style="font-size: 11px; color: #555; margin-bottom: 6px; line-height: 1.3;">${pharmacy.address || pharmacy.district?.name || ""}</div>
+          <div style="display: flex; gap: 6px;">
+            <a href="tel:${pharmacy.phone.replace(/[^0-9+]/g, "")}" style="display: inline-block; background: #fdebec; color: #dc2626; padding: 4px 8px; border-radius: 5px; font-size: 11px; font-weight: 700; text-decoration: none;">Ara</a>
+            <a href="${mapsUrl}" target="_blank" rel="noreferrer" style="display: inline-block; background: #dc2626; color: #fff; padding: 4px 8px; border-radius: 5px; font-size: 11px; font-weight: 700; text-decoration: none;">Yol Tarifi</a>
           </div>
         </div>
       `;
@@ -192,50 +218,47 @@ export function RealLeafletMap({
         onSelect(index);
       });
 
-      if (isSelected) {
-        marker.openPopup();
-      }
-
       bounds.extend([lat, lng]);
       markersRef.current.push(marker);
     });
 
-    if (validCoordsCount > 0) {
-      map.fitBounds(bounds, {
-        padding: [45, 45],
-        maxZoom: 15,
-      });
-    }
+    const currentSig = pharmacies.map((p) => p.id || p.name).join("|");
+    const listChanged = currentSig !== prevPharmaciesSigRef.current;
+    prevPharmaciesSigRef.current = currentSig;
 
-    // Leaflet needs invalidateSize after rendering
-    setTimeout(() => {
-      map.invalidateSize();
-    }, 200);
-  }, [pharmacies, selectedPharmacy, onSelect, userLocation]);
-
-  // When selectedPharmacy changes, center and open popup
-  useEffect(() => {
-    const map = mapInstanceRef.current;
-    if (!map) return;
-
-    const p = pharmacies[selectedPharmacy];
-    if (p?.location?.latitude && p?.location?.longitude) {
-      map.setView([p.location.latitude, p.location.longitude], 15, {
-        animate: true,
-      });
-      const marker = markersRef.current[selectedPharmacy];
-      if (marker) {
-        marker.openPopup();
+    if (listChanged) {
+      if (validCoordsCount > 0 && bounds.isValid()) {
+        map.invalidateSize();
+        map.fitBounds(bounds, {
+          padding: [28, 28],
+          maxZoom: 14,
+        });
+      }
+    } else {
+      const p = pharmacies[selectedPharmacy];
+      if (p?.location?.latitude && p?.location?.longitude) {
+        map.setView([p.location.latitude, p.location.longitude], Math.max(map.getZoom(), 14), {
+          animate: true,
+        });
+        const marker = markersRef.current[selectedPharmacy];
+        if (marker) {
+          marker.openPopup();
+        }
       }
     }
-  }, [selectedPharmacy, pharmacies]);
+
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 150);
+
+    return () => clearTimeout(timer);
+  }, [pharmacies, selectedPharmacy, onSelect, userLocation]);
 
   return (
-    <div className="map-preview" aria-label="Nöbetçi eczane harita görünümü">
+    <div className="map-preview w-full h-full relative" aria-label="Nöbetçi eczane harita görünümü">
       <div
         ref={mapContainerRef}
-        className="map-canvas w-full h-[480px] sm:h-[520px] relative z-0"
-        style={{ minHeight: "400px" }}
+        className="map-canvas w-full h-full relative z-0"
       />
     </div>
   );

@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { useLocation } from "wouter";
 import {
   Activity,
   Wind,
@@ -36,8 +37,34 @@ import { toast } from "sonner";
 
 type TabKey = "sgk-hesaplayici" | "hava-polen" | "titck-bildirim" | "etkilesim" | "kan-bagisi" | "ilk-yardim";
 
+function resolveTabFromPath(path: string): TabKey {
+  if (path.includes("hava-kalitesi") || path.includes("polen")) return "hava-polen";
+  if (path.includes("titck")) return "titck-bildirim";
+  if (path.includes("etkilesim")) return "etkilesim";
+  if (path.includes("kan-bagisi")) return "kan-bagisi";
+  if (path.includes("ilk-yardim")) return "ilk-yardim";
+  return "sgk-hesaplayici";
+}
+
 export default function HealthPortalTools() {
-  const [activeTab, setActiveTab] = useState<TabKey>("sgk-hesaplayici");
+  const [location] = useLocation();
+  const [activeTab, setActiveTab] = useState<TabKey>(() => resolveTabFromPath(location));
+
+  useEffect(() => {
+    setActiveTab(resolveTabFromPath(location));
+  }, [location]);
+
+  useEffect(() => {
+    const titles: Record<TabKey, string> = {
+      "sgk-hesaplayici": "SGK İlaç Katkı Payı & Muayene Ücreti Hesaplama | Nöbetçi Eczanem",
+      "hava-polen": "81 İl Anlık Hava Kalitesi (AQI) ve Polen İndeksi | Nöbetçi Eczanem",
+      "titck-bildirim": "TİTCK İlaç Geri Çekme ve Piyasadan Toplatma Kararları | Nöbetçi Eczanem",
+      "etkilesim": "İlaç - Besin ve Alkol Etkileşim Kontrol Motoru | Nöbetçi Eczanem",
+      "kan-bagisi": "Kızılay Kan Bağış Noktaları ve Kan Grubu Uyumluluk Rehberi | Nöbetçi Eczanem",
+      "ilk-yardim": "7/24 Acil İlk Yardım ve Zehirlenme Müdahale Rehberi | Nöbetçi Eczanem",
+    };
+    document.title = titles[activeTab] || "Sağlık Portalı & Hesaplama Araçları | Nöbetçi Eczanem";
+  }, [activeTab]);
 
   // SGK Calculator States
   const [patientType, setPatientType] = useState<"calisan" | "emekli" | "yesilkart">("calisan");

@@ -100,8 +100,11 @@ export const TURKEY_DISTRICTS: Record<string, string[]> = {
 
 // Turkish slug helper
 export function toTurkishSlug(text: string): string {
+  if (!text) return "";
   return text
-    .toLowerCase()
+    .toLocaleLowerCase("tr-TR")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/ğ/g, "g")
     .replace(/ü/g, "u")
     .replace(/ş/g, "s")

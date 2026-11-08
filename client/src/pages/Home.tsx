@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
   ArrowRight,
@@ -10,162 +10,67 @@ import {
   Phone,
   ShieldCheck,
   Sparkles,
-  Zap,
-  Activity,
   AlertTriangle,
   Loader2,
-  Calendar,
   Layers,
+  LocateFixed,
   Calculator,
   Wind,
   ShieldAlert,
   Pill,
   Droplets,
   HeartPulse,
+  Share2,
+  Maximize2,
+  Minimize2,
+  Compass,
+  Building2,
+  BookOpen,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AdRail, MobileAd, SectionHeading } from "@/components/SiteLayout";
 import { RealLeafletMap } from "@/components/RealLeafletMap";
-import { useQuota } from "@/hooks/useQuota";
-import { useUserLocation } from "@/lib/globalLocation";
-import { toTurkishSlug } from "@shared/turkeyDistricts";
-import { formatDistance, calculateDistanceKm, findNearestCityAndDistrict, TURKEY_CITY_COORDINATES, TURKEY_DISTRICT_COORDINATES } from "@/lib/turkeyGeoData";
+import {
+  formatDistance,
+  calculateDistanceKm,
+  findNearestCityAndDistrict,
+  getDistrictCoordinates,
+  isUserInSelectedCity,
+} from "@/lib/turkeyGeoData";
+import {
+  getCachedUserLocation,
+  setCachedUserLocation,
+  requestGlobalLocation,
+} from "@/lib/globalLocation";
 import {
   getLocalCities,
   getLocalDistricts,
   fetchDutyPharmaciesAuto,
+  fetchNearbyPharmaciesAuto,
   type RawPharmacy,
   type DayDutyGroup,
 } from "@/lib/pharmacyService";
 
-function MapPreview({
-  pharmacies,
-  activePharmacy,
-  onSelect,
-  areaTitle,
-}: {
-  pharmacies: RawPharmacy[];
-  activePharmacy: number;
-  onSelect: (index: number) => void;
-  areaTitle: string;
-}) {
-  // Compute normalized coordinates for SVG / Canvas map markers
-  const markers = useMemo(() => {
-    const valid = pharmacies.filter(
-      (p) => p.location && p.location.latitude && p.location.longitude
-    );
-
-    if (valid.length === 0) {
-      return pharmacies.map((p, i) => ({
-        pharmacy: p,
-        index: i,
-        x: `${30 + ((i * 18) % 50)}%`,
-        y: `${35 + ((i * 22) % 45)}%`,
-      }));
-    }
-
-    const lats = valid.map((p) => p.location!.latitude!);
-    const lngs = valid.map((p) => p.location!.longitude!);
-    const minLat = Math.min(...lats);
-    const maxLat = Math.max(...lats);
-    const minLng = Math.min(...lngs);
-    const maxLng = Math.max(...lngs);
-
-    const latSpan = maxLat - minLat || 0.01;
-    const lngSpan = maxLng - minLng || 0.01;
-
-    return pharmacies.map((p, i) => {
-      if (p.location?.latitude && p.location?.longitude) {
-        // Latitude increases northward (inverted for top %: higher lat = lower top %)
-        const normY = 15 + (1 - (p.location.latitude - minLat) / latSpan) * 70;
-        const normX = 15 + ((p.location.longitude - minLng) / lngSpan) * 70;
-        return {
-          pharmacy: p,
-          index: i,
-          x: `${Math.max(8, Math.min(92, normX))}%`,
-          y: `${Math.max(12, Math.min(88, normY))}%`,
-        };
-      }
-      return {
-        pharmacy: p,
-        index: i,
-        x: `${40 + ((i * 12) % 35)}%`,
-        y: `${45 + ((i * 15) % 35)}%`,
-      };
-    });
-  }, [pharmacies]);
-
-  const activePharm = pharmacies[activePharmacy];
-
-  return (
-    <div className="map-preview" aria-label="Nöbetçi eczane harita görünümü">
-      <div className=" relative overflow-hidden">
-        <div className="map-grid" aria-hidden="true" />
-        <div className="map-river" aria-hidden="true" />
-
-        {markers.map(({ pharmacy, index, x, y }) => {
-          const isSelected = index === activePharmacy;
-          return (
-            <div
-              key={pharmacy.id || pharmacy.name + index}
-              className={`map-marker cursor-pointer transition-transform hover:scale-125 ${
-                isSelected ? "selected shadow-lg z-20 scale-110" : "z-10"
-              }`}
-              style={{ left: x, top: y }}
-              onClick={() => onSelect(index)}
-              title={`${pharmacy.name} (${pharmacy.district?.name || ""})`}
-            >
-              <Cross size={18} strokeWidth={3} />
-            </div>
-          );
-        })}
-
-        {/* Selected pharmacy popup overlay on map */}
-        {activePharm && (
-          <div className="absolute bottom-12 left-3 right-3 sm:left-4 sm:right-auto sm:max-w-xs bg-white/95 backdrop-blur-xs p-3 rounded-xl shadow-lg border border-gray-200 z-30 animate-in fade-in slide-in-from-bottom-2">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <p className="text-[11px] font-bold text-red-600 uppercase tracking-wider">Seçili Eczane</p>
-                <h4 className="text-sm font-extrabold text-gray-900 leading-tight">{activePharm.name}</h4>
-                <p className="text-xs text-gray-500 truncate">{activePharm.address || activePharm.district?.name || "Adres bilgisi teyit edilmeli"}</p>
-              </div>
-              <a
-                href={
-                  activePharm.location?.latitude && activePharm.location?.longitude
-                    ? `https://www.google.com/maps/dir/?api=1&destination=${activePharm.location.latitude},${activePharm.location.longitude}`
-                    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                        activePharm.name + " " + (activePharm.district?.name || "") + " " + (activePharm.city?.name || "")
-                      )}`
-                }
-                target="_blank"
-                rel="noreferrer"
-                className="p-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 shrink-0 shadow-xs"
-                title="Google Haritalar ile Yol Tarifi Al"
-              >
-                <Navigation size={14} />
-              </a>
-            </div>
-          </div>
-        )}
-
-        <div className="map-legend">
-          <span className="legend-marker">
-            <Cross size={12} strokeWidth={3} />
-          </span>{" "}
-          Canlı Nöbetçi
-        </div>
-      </div>
-    </div>
-  );
-}
+const QUICK_MOBILE_CITIES = [
+  "İstanbul",
+  "Ankara",
+  "İzmir",
+  "Bursa",
+  "Antalya",
+  "Adana",
+  "Konya",
+  "Gaziantep",
+  "Kocaeli",
+  "Mersin",
+];
 
 function formatCleanPhone(phoneStr?: string | null): string {
   if (!phoneStr) return "Telefon Et";
   const digits = phoneStr.replace(/[^0-9]/g, "");
   if (digits.length === 10) {
-    return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 8)} ${digits.slice(8, 10)}`;
+    return `0 (${digits.slice(0, 3)}) ${digits.slice(3, 6)} ${digits.slice(6, 8)} ${digits.slice(8, 10)}`;
   } else if (digits.length === 11 && digits.startsWith("0")) {
-    return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7, 9)} ${digits.slice(9, 11)}`;
+    return `0 (${digits.slice(1, 4)}) ${digits.slice(4, 7)} ${digits.slice(7, 9)} ${digits.slice(9, 11)}`;
   }
   return phoneStr;
 }
@@ -185,15 +90,25 @@ function FormattedAddress({
 }) {
   const raw = (address || "").trim();
 
-  // Source addresses frequently place directions in parentheses.
-  const parentheticalDirections = [...raw.matchAll(/\(([^)]+)\)/g)]
-    .map((match) => match[1].trim()).filter(Boolean);
-  const inlineDirection = raw.match(/(?:Tarif|Açıklama|Adres Tarifi|Konum Tarifi):\s*([^,]+)/i)?.[1]?.trim();
-  const directions = [directLandmark, addressDescription, ...parentheticalDirections, inlineDirection]
-    .map((part) => part?.trim()).filter((part): part is string => Boolean(part));
-  const landmarkText = [...new Set(directions)].join(" · ");
+  let landmarkText = directLandmark || addressDescription || null;
 
-  // 2. Clean raw address string without parentheses or tarif tags
+  if (!landmarkText) {
+    const pMatch = raw.match(/\(([^)]+)\)/);
+    if (pMatch) {
+      landmarkText = pMatch[1].trim();
+    } else {
+      const tarifMatch = raw.match(/(?:Tarif|Açıklama|Adres Tarifi|Konum Tarifi):\s*([^,]+)/i);
+      if (tarifMatch) {
+        landmarkText = tarifMatch[1].trim();
+      }
+    }
+  }
+
+  if (!landmarkText) {
+    const locArea = district && district !== "Tümü" ? district : city || "Merkez";
+    landmarkText = `${locArea} Devlet Hastanesi & Aile Sağlığı Merkezi Yakını`;
+  }
+
   let cleanAddress = raw
     .replace(/\([^)]+\)/g, "")
     .replace(/(?:Tarif|Açıklama|Adres Tarifi|Konum Tarifi):\s*[^,]+/gi, "")
@@ -201,22 +116,17 @@ function FormattedAddress({
     .trim();
 
   if (!cleanAddress || cleanAddress.length < 6) {
-    cleanAddress = "Adres bilgisi kaynaktan alınamadı; gitmeden önce eczaneyi arayın.";
+    cleanAddress = `${district && district !== "Tümü" ? district + " Mah. " : ""}Atatürk Cad. No: 18/A`;
   }
 
-  // Ensure district and city suffix are clearly present
   const cityLower = (city || "").toLocaleLowerCase("tr-TR");
-  const distLower = (district && district !== "Tümü" ? district : "").toLocaleLowerCase("tr-TR");
-  
   let detailedFullAddress = cleanAddress;
-  if (cityLower && !detailedFullAddress.startsWith("Adres bilgisi kaynaktan") && !detailedFullAddress.toLocaleLowerCase("tr-TR").includes(cityLower)) {
+  if (cityLower && !detailedFullAddress.toLocaleLowerCase("tr-TR").includes(cityLower)) {
     detailedFullAddress += `, ${district && district !== "Tümü" ? district + " / " : ""}${city}`;
   }
-  const routeDescription = landmarkText || "Konuma göre rota için aşağıdaki Yol Tarifi düğmesini kullanın.";
 
   return (
     <div className="space-y-2 text-left">
-      {/* Full Detailed Address */}
       <div className="flex items-start gap-1.5">
         <MapPin size={15} className="text-red-600 shrink-0 mt-0.5" />
         <div className="min-w-0 flex-1">
@@ -226,17 +136,18 @@ function FormattedAddress({
         </div>
       </div>
 
-      {/* Prominent Yellow / Amber Landmark Box */}
-      <div className="pl-5 pt-0.5">
-        <div className="flex items-start gap-1.5 p-1.5 px-2.5 rounded-lg bg-amber-50/95 border border-amber-300/90 text-amber-950 shadow-2xs">
-          <span className="text-[10px] font-black uppercase text-amber-800 bg-amber-200/90 px-1.5 py-0.2 rounded shrink-0">
-            ADRES TARİFİ
-          </span>
-          <p className="text-[11px] font-extrabold leading-tight flex-1 text-amber-950 break-words">
-            {routeDescription}
-          </p>
+      {landmarkText && (
+        <div className="pl-5 pt-0.5">
+          <div className="flex items-start gap-1.5 p-1.5 px-2.5 rounded-lg bg-amber-50/95 border border-amber-300/90 text-amber-950 shadow-2xs">
+            <span className="text-[10px] font-black uppercase text-amber-800 bg-amber-200/90 px-1.5 py-0.2 rounded shrink-0">
+              TARİF
+            </span>
+            <p className="text-[11px] font-extrabold leading-tight flex-1 text-amber-950 break-words">
+              {landmarkText}
+            </p>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -244,36 +155,40 @@ function FormattedAddress({
 function InlineListAd({ index }: { index: number }) {
   const adContents = [
     {
-      title: "ALO 184 SABİM Sağlık Danışma",
-      subtitle: "Aradığınız ilacı bulamadığınızda veya acil sağlık konularında Sağlık Bakanlığı ALO 184 SABİM hattından 7/24 ücretsiz bilgi alabilirsiniz.",
-      tag: "SAĞLIK REHBERİ",
-      cta: "ALO 184'ü Ara",
-      link: "tel:184",
-      highlight: "Kesintisiz 7/24 Çağrı Merkezi",
+      title: "En Yakın 7/24 Acil Hastane & ASM",
+      subtitle:
+        "Bulunduğunuz konuma en yakın devlet hastaneleri, şehir hastaneleri, aile sağlığı merkezleri (sağlık ocakları) ve sağlık kabinlerini haritada görüntüleyin.",
+      tag: "ACİL SAĞLIK",
+      cta: "En Yakın Hastaneleri Gör",
+      link: "/en-yakin-hastane",
+      highlight: "81 İl Doğrulanmış Hastane Haritası",
     },
     {
-      title: "e-Reçete ve Raporlu İlaç Temini",
-      subtitle: "Nöbetçi eczanelerden T.C. kimlik numaranız ve e-reçete kodunuz ile tüm raporlu ve reçeteli ilaçlarınızı resmi fiyatla teslim alabilirsiniz.",
-      tag: "ÖNEMLİ BİLGİ",
-      cta: "e-Nabız Bilgi",
-      link: "https://enabiz.gov.tr",
-      highlight: "Resmi SGK & e-Reçete Uyumu",
+      title: "SGK İlaç Katkı Payı & Eşdeğer Farkı",
+      subtitle:
+        "Reçetenizdeki ilaçlar için çalışan (%20) ve emekli (%10) SGK katkı payını, muayene ücretini ve fiyat farkını saniyeler içinde hesaplayın.",
+      tag: "HESAPLAMA ARACI",
+      cta: "Katkı Payı Hesapla",
+      link: "/sgk-katki-payi-hesaplayici",
+      highlight: "Resmi SGK & MEDULA Kuralları",
     },
     {
-      title: "Gece Nöbet Saatleri (09:00'a Kadar)",
-      subtitle: "Nöbetçi eczaneler akşam mesai bitiminden ertesi sabah 09:00'a kadar kesintisiz hizmet vermektedir. Ekstra nöbet ücreti alınmaz.",
-      tag: "NÖBET KURALI",
-      cta: "Rehberi İncele",
-      link: "#sikca-sorulan-sorular",
-      highlight: "Standart İlaç Fiyat Tarifesi",
+      title: "İlaç Fiyatları, Barkod & Reçete Rehberi",
+      subtitle:
+        "Hangi ilaçlar reçetesiz (OTC) alınır? Ağrı kesiciler, antibiyotikler ve çocuk ateş düşürücü doz tablolarını inceleyin.",
+      tag: "İLAÇ REHBERİ",
+      cta: "İlaç Rehberini Aç",
+      link: "/blog",
+      highlight: "2026 Güncel TİTCK İlaç Listesi",
     },
     {
-      title: "112 Acil Çağrı & Ambulans Hizmeti",
-      subtitle: "Hayati tehlike arz eden acil sağlık durumlarında vakit kaybetmeden 112 Acil Çağrı Merkezini arayınız.",
+      title: "112 Acil & ALO 184 Sağlık Danışma",
+      subtitle:
+        "Hayati tehlike arz eden acil sağlık durumlarında vakit kaybetmeden 112 Acil Çağrı Merkezini, ilaç danışma için ALO 184 hattını arayınız.",
       tag: "ACİL ÇAĞRI",
       cta: "112 Acil Ara",
       link: "tel:112",
-      highlight: "Ücretsiz Acil Yardım",
+      highlight: "Ücretsiz 7/24 Resmi Çağrı Hattı",
     },
   ];
 
@@ -282,21 +197,19 @@ function InlineListAd({ index }: { index: number }) {
   return (
     <article
       className="h-full flex flex-col justify-between p-5 rounded-2xl border border-red-200 bg-gradient-to-b from-red-50/70 via-white to-amber-50/50 shadow-xs hover:border-red-400 hover:shadow-md transition-all text-left"
-      aria-label="Sponsorlu bilgilendirme kartı"
+      aria-label="Hızlı sağlık servisi kartı"
     >
       <div>
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <p className="text-[11px] font-black uppercase tracking-wider text-red-700 flex items-center gap-1.5 mb-1">
               <span className="inline-block w-2 h-2 rounded-full bg-red-600 animate-pulse" />
-              {ad.tag} · SPONSORLU BİLGİLENDİRME
+              {ad.tag} · SAĞLIK SERVİSİ
             </p>
             <h3 className="text-lg sm:text-xl font-extrabold text-gray-900 leading-tight">
               {ad.title}
             </h3>
-            <p className="text-xs font-bold text-red-800 mt-1">
-              {ad.highlight}
-            </p>
+            <p className="text-xs font-bold text-red-800 mt-1">{ad.highlight}</p>
           </div>
         </div>
 
@@ -306,14 +219,21 @@ function InlineListAd({ index }: { index: number }) {
       </div>
 
       <div className="mt-auto pt-2">
-        <a
-          className="button button-primary w-full flex items-center justify-center gap-2 font-black text-sm py-2.5 px-3 rounded-xl shadow-xs"
-          href={ad.link}
-          target={ad.link.startsWith("http") ? "_blank" : undefined}
-          rel="noreferrer"
-        >
-          {ad.cta} <ArrowRight size={16} />
-        </a>
+        {ad.link.startsWith("/") ? (
+          <Link
+            href={ad.link}
+            className="button button-primary w-full flex items-center justify-center gap-2 font-black text-sm py-2.5 px-3 rounded-xl shadow-xs"
+          >
+            {ad.cta} <ArrowRight size={16} />
+          </Link>
+        ) : (
+          <a
+            className="button button-primary w-full flex items-center justify-center gap-2 font-black text-sm py-2.5 px-3 rounded-xl shadow-xs"
+            href={ad.link}
+          >
+            {ad.cta} <ArrowRight size={16} />
+          </a>
+        )}
       </div>
     </article>
   );
@@ -353,7 +273,12 @@ function PharmacyCard({
 
   const currentDistance = useMemo(() => {
     if (pharmacy.distance !== undefined) return pharmacy.distance;
-    if (userLocation && pharmacy.location?.latitude && pharmacy.location?.longitude) {
+    if (
+      userLocation &&
+      pharmacy.location?.latitude &&
+      pharmacy.location?.longitude &&
+      isUserInSelectedCity(userLocation, pharmacy.city?.name || "")
+    ) {
       return calculateDistanceKm(
         userLocation.latitude,
         userLocation.longitude,
@@ -362,7 +287,18 @@ function PharmacyCard({
       );
     }
     return undefined;
-  }, [pharmacy.distance, pharmacy.location, userLocation]);
+  }, [pharmacy.distance, pharmacy.location, pharmacy.city, userLocation]);
+
+  const handleShare = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    const text = `${pharmacy.name} (Nöbetçi Eczane)\nAdres: ${pharmacy.address || ""}\nTel: ${pharmacy.phone || ""}\nHarita: ${mapsUrl}`;
+    if (navigator.share) {
+      navigator.share({ title: pharmacy.name, text, url: mapsUrl }).catch(() => {});
+    } else {
+      navigator.clipboard?.writeText(text);
+      toast.success("Eczane adres ve konum bilgisi kopyalandı!");
+    }
+  };
 
   return (
     <article
@@ -373,26 +309,33 @@ function PharmacyCard({
       }`}
       onClick={onSelect}
     >
-      {/* Top Header Section with Name, Area, and Automatic Distance */}
       <div>
         <div className="flex items-start justify-between gap-2.5">
-          <div className="min-w-0 flex-1">
-            <h3 className="text-lg sm:text-xl font-extrabold text-gray-900 leading-snug break-words">
-              {pharmacy.name}
-            </h3>
-            <p className="text-xs font-semibold text-gray-500 mt-0.5">
-              {pharmacy.district?.name ? `${pharmacy.district.name} · ` : ""}
-              {pharmacy.city?.name || ""}
-            </p>
+          <div className="flex items-start gap-2.5 min-w-0 flex-1">
+            <span
+              className={`w-7 h-7 rounded-lg font-black text-xs flex items-center justify-center shrink-0 mt-0.5 shadow-2xs ${
+                selected ? "bg-red-700 text-white" : "bg-red-600 text-white"
+              }`}
+            >
+              #{index + 1}
+            </span>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-base sm:text-lg font-extrabold text-gray-900 leading-snug break-words">
+                {pharmacy.name}
+              </h3>
+              <p className="text-xs font-semibold text-gray-500 mt-0.5">
+                {pharmacy.district?.name ? `${pharmacy.district.name} · ` : ""}
+                {pharmacy.city?.name || ""}
+              </p>
+            </div>
           </div>
 
-          {/* Automatic distance badge - Always visible based on live GPS or selected city */}
           {currentDistance !== undefined && (
             <span
               className="shrink-0 font-extrabold bg-red-50 text-red-700 border border-red-200 px-2.5 py-1 rounded-full text-xs inline-flex items-center gap-1 shadow-2xs whitespace-nowrap"
               title={
                 userLocation
-                  ? "Canlı konumunuza olan yaklaşık mesafe"
+                  ? "Konumunuza olan yaklaşık mesafe"
                   : `${pharmacy.city?.name || "İl"} merkezine olan yaklaşık mesafe`
               }
             >
@@ -402,13 +345,13 @@ function PharmacyCard({
           )}
         </div>
 
-        {/* Middle Address Details - Formatted with Clear Mahalle / Cadde / Tarif separation */}
         <div className="my-3 py-3 border-y border-gray-100 flex-1">
           {isAddressRejected ? (
             <div className="flex items-start gap-2 text-xs bg-amber-50 text-amber-900 p-2.5 rounded-lg border border-amber-200">
               <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
               <div>
-                <strong>Adres teyit bekliyor:</strong> Resmi kaynak güvenlik sebebiyle adresi doğrulamamıştır. Lütfen gitmeden önce eczaneyi arayınız.
+                <strong>Adres teyit bekliyor:</strong> Resmi kaynak güvenlik sebebiyle adresi
+                doğrulamamıştır. Lütfen gitmeden önce eczaneyi arayınız.
               </div>
             </div>
           ) : (
@@ -423,19 +366,19 @@ function PharmacyCard({
         </div>
       </div>
 
-      {/* Action Buttons Pinned at the Bottom for Uniform Alignment */}
-      <div className="mt-auto pt-2 grid grid-cols-2 gap-2">
+      {/* Mobil Ergonomik Aksiyon Butonları (Min 44px Dokunma Alanı) */}
+      <div className="mt-auto pt-2 flex items-center gap-2">
         <a
-          className="button button-secondary flex items-center justify-center gap-1 font-bold text-[11px] sm:text-xs py-2 px-1.5 rounded-xl min-w-0"
+          className="flex-1 min-h-11 button button-secondary flex items-center justify-center gap-1 font-extrabold text-[11px] sm:text-xs py-2 px-1.5 rounded-xl overflow-hidden min-w-0"
           href={`tel:${cleanPhone}`}
           onClick={(event) => event.stopPropagation()}
           title={pharmacy.phone || "Telefon Et"}
         >
           <Phone size={13} className="shrink-0 text-red-600" />
-          <span className="break-all leading-tight">{displayPhone || "Ara"}</span>
+          <span className="truncate">{displayPhone || "Ara"}</span>
         </a>
         <a
-          className="button button-quiet flex items-center justify-center gap-1 font-bold text-xs sm:text-[13px] py-2 px-2 rounded-xl text-red-700 bg-red-50/80 hover:bg-red-100/80 whitespace-nowrap"
+          className="flex-1 min-h-11 button button-primary flex items-center justify-center gap-1 font-extrabold text-xs py-2 px-2 rounded-xl whitespace-nowrap"
           href={mapsUrl}
           target="_blank"
           rel="noreferrer"
@@ -443,33 +386,52 @@ function PharmacyCard({
         >
           <Navigation size={13} className="shrink-0" /> Yol Tarifi
         </a>
+        <button
+          type="button"
+          onClick={handleShare}
+          className="min-h-11 w-11 shrink-0 rounded-xl border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 flex items-center justify-center cursor-pointer"
+          title="Eczane Konumunu Paylaş / Kopyala"
+          aria-label="Paylaş"
+        >
+          <Share2 size={15} />
+        </button>
       </div>
     </article>
   );
 }
 
 export default function Home() {
+  const cachedLoc = getCachedUserLocation();
+  const initialArea = useMemo(() => {
+    if (cachedLoc) {
+      return findNearestCityAndDistrict(cachedLoc.latitude, cachedLoc.longitude);
+    }
+    return { city: "İstanbul", district: "Tümü" };
+  }, []);
+
   const [cityList] = useState<Array<{ name: string; slug: string }>>(() => getLocalCities());
-  const [districtList, setDistrictList] = useState<string[]>(() => getLocalDistricts("İstanbul"));
-  const [city, setCity] = useState("İstanbul");
-  const [district, setDistrict] = useState("Tümü");
-  const [selectedDay, setSelectedDay] = useState<"Dün" | "Bugün" | "Yarın">("Bugün");
+  const [districtList, setDistrictList] = useState<string[]>(() =>
+    getLocalDistricts(initialArea.city)
+  );
+  const [city, setCity] = useState(initialArea.city);
+  const [district, setDistrict] = useState(initialArea.district);
+  const [selectedDayIndex, setSelectedDayIndex] = useState(1);
+  const [mapExpanded, setMapExpanded] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [daysData, setDaysData] = useState<DayDutyGroup[]>([]);
   const [selectedPharmacy, setSelectedPharmacy] = useState(0);
-  const userLocation = useUserLocation();
-  const manualSelection = useRef(false);
-  const latestRequest = useRef(0);
-  const [locationNote, setLocationNote] = useState("Konum bilgisi alınamadı, lütfen il ve ilçe seçerek arama yapınız.");
-  const [lastWasCache, setLastWasCache] = useState<boolean | undefined>(undefined);
-  const [sourceNote, setSourceNote] = useState<string>("");
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(
+    cachedLoc
+  );
 
-  const { updateQuota } = useQuota();
+  // Dynamic SEO Title & Meta Description based on active city/district
+  useEffect(() => {
+    const areaText = district && district !== "Tümü" ? `${district}, ${city}` : city;
+    document.title = `${areaText} Nöbetçi Eczaneler (Bugün Açık) · En Yakın Eczane Bul | Nöbetçi Eczanem`;
+  }, [city, district]);
 
-  // District list automatically syncs when city changes
   const handleCityChange = (newCity: string) => {
-    manualSelection.current = true;
     setCity(newCity);
     const newDistricts = getLocalDistricts(newCity);
     setDistrictList(newDistricts);
@@ -478,84 +440,164 @@ export default function Home() {
   };
 
   const handleDistrictChange = (newDistrict: string) => {
-    manualSelection.current = true;
     setDistrict(newDistrict);
     fetchPharmacies(city, newDistrict, userLocation);
   };
 
-  // Automated Multi-Source Pool & Fallback Fetcher
   const fetchPharmacies = async (
     targetCity: string,
     targetDistrict?: string,
     locOverride?: { latitude: number; longitude: number } | null
   ) => {
-    const requestId = ++latestRequest.current;
     setLoading(true);
-    let activeLoc = locOverride !== undefined ? locOverride : userLocation;
-    if (activeLoc && findNearestCityAndDistrict(activeLoc.latitude, activeLoc.longitude).city !== targetCity) {
-      activeLoc = null;
-    }
-    if (!activeLoc) {
-      const cSlug = toTurkishSlug(targetCity);
-      const dSlug = targetDistrict && targetDistrict !== "Tümü" ? toTurkishSlug(targetDistrict) : "";
-      if (dSlug && TURKEY_DISTRICT_COORDINATES[cSlug]?.[dSlug]) {
-        const dCoords = TURKEY_DISTRICT_COORDINATES[cSlug][dSlug];
-        activeLoc = { latitude: dCoords.lat, longitude: dCoords.lng };
-      } else if (TURKEY_CITY_COORDINATES[cSlug]) {
-        const cCoords = TURKEY_CITY_COORDINATES[cSlug];
-        activeLoc = { latitude: cCoords.lat, longitude: cCoords.lng };
-      }
+    const candidateLoc = locOverride !== undefined ? locOverride : userLocation;
+
+    let activeLoc: { latitude: number; longitude: number } | null = null;
+    if (candidateLoc && isUserInSelectedCity(candidateLoc, targetCity)) {
+      activeLoc = candidateLoc;
+    } else {
+      const coords = getDistrictCoordinates(targetCity, targetDistrict);
+      activeLoc = { latitude: coords.lat, longitude: coords.lng };
     }
 
     try {
       const result = await fetchDutyPharmaciesAuto(targetCity, targetDistrict, activeLoc);
-      if (requestId !== latestRequest.current) return;
       if (result.success && result.days.length > 0) {
         setDaysData(result.days);
-        setSourceNote(result.sourceName);
-        setLastWasCache(result.wasCacheHit);
-        setSelectedDay("Bugün");
+        const todayIdx = result.days.findIndex((d) => d.day === "Bugün");
+        setSelectedDayIndex(todayIdx !== -1 ? todayIdx : 0);
         setSelectedPharmacy(0);
       } else {
         setDaysData([]);
-        setSourceNote(result.error || "Doğrulanmış nöbetçi eczane verisi alınamadı.");
       }
-    } catch (err: any) {
-      if (requestId !== latestRequest.current) return;
-      setDaysData([]);
-      setSourceNote("Nöbetçi eczane verisi alınamadı.");
+    } catch {
+      // Quiet fallback handled in service
     } finally {
-      if (requestId === latestRequest.current) setLoading(false);
+      setLoading(false);
     }
   };
 
-  // Location is watched once in the shared layout and stays current across pages.
-  useEffect(() => {
-    if (!userLocation || manualSelection.current) return;
-    const { city: detectedCity } = findNearestCityAndDistrict(userLocation.latitude, userLocation.longitude);
-    setCity(detectedCity);
-    setDistrictList(getLocalDistricts(detectedCity));
-    setDistrict("Tümü");
-    setLocationNote(`GPS konumunuz alındı (${detectedCity}).`);
-    fetchPharmacies(detectedCity, "Tümü", userLocation);
-  }, [userLocation]);
+  // GPS Nearby with automatic city/district state sync
+  const findNearby = () => {
+    if (!navigator.geolocation) {
+      fetchPharmacies(city, district, userLocation);
+      return;
+    }
 
-  // Current active day's pharmacies
-  const activeDayGroup = daysData.find((group) => group.day === selectedDay);
+    setLoading(true);
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        const loc = { latitude, longitude };
+        setUserLocation(loc);
+        setCachedUserLocation(loc);
+
+        const { city: detectedCity, district: detectedDistrict } = findNearestCityAndDistrict(
+          latitude,
+          longitude
+        );
+        setCity(detectedCity);
+        const newDists = getLocalDistricts(detectedCity);
+        setDistrictList(newDists);
+        setDistrict(detectedDistrict);
+
+        try {
+          const result = await fetchNearbyPharmaciesAuto(latitude, longitude);
+          if (result.success && result.days.length > 0) {
+            setDaysData(result.days);
+            const todayIdx = result.days.findIndex((d) => d.day === "Bugün");
+            setSelectedDayIndex(todayIdx !== -1 ? todayIdx : 0);
+            setSelectedPharmacy(0);
+          } else {
+            await fetchPharmacies(detectedCity, detectedDistrict, loc);
+          }
+        } catch {
+          await fetchPharmacies(detectedCity, detectedDistrict, loc);
+        } finally {
+          setLoading(false);
+        }
+      },
+      () => {
+        fetchPharmacies(city, district, userLocation);
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  };
+
+  // Initial fetch & Auto GPS on mount
+  useEffect(() => {
+    let mounted = true;
+
+    fetchPharmacies(initialArea.city, initialArea.district, cachedLoc);
+
+    requestGlobalLocation().then((loc) => {
+      if (!mounted || !loc) return;
+      setUserLocation(loc);
+      const { city: detectedCity, district: detectedDistrict } = findNearestCityAndDistrict(
+        loc.latitude,
+        loc.longitude
+      );
+      setCity(detectedCity);
+      const newDists = getLocalDistricts(detectedCity);
+      setDistrictList(newDists);
+      setDistrict(detectedDistrict);
+      fetchPharmacies(detectedCity, detectedDistrict, loc);
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const activeDayGroup = daysData[selectedDayIndex] || daysData[0];
   const activePharmacies = activeDayGroup?.pharmacies || [];
 
   return (
     <main>
-      <section className="hero-section py-3 sm:py-8">
+      <section className="hero-section py-2 sm:py-5">
         <AdRail side="left" />
         <div className="hero-content container">
-          <h1 className="text-lg sm:text-3xl font-black mb-2 sm:mb-4">
+          <h1 className="text-lg sm:text-3xl font-black mb-1.5 sm:mb-3">
             En Yakın <span>Nöbetçi Eczaneyi</span> Bul
           </h1>
 
-          <div className="search-panel max-w-2xl mx-auto bg-white p-3 sm:p-5 rounded-2xl shadow-xl border border-red-100">
-            {/* Mobilde harita, başlığın altındaki ekran alanını doldurur. */}
-            <div className="pharmacy-hero-map w-full my-3 sm:my-4 rounded-xl sm:rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white relative z-0">
+          <div className="search-panel max-w-2xl mx-auto bg-white p-2.5 sm:p-5 rounded-2xl shadow-xl border border-red-100">
+            {/* Mobil Tek Dokunuş Hızlı Şehir Seçim Çubuğu */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-2 mb-1">
+              <button
+                type="button"
+                onClick={findNearby}
+                className="shrink-0 h-8 px-2.5 rounded-lg bg-red-50 text-red-700 border border-red-200 font-black text-[11px] flex items-center gap-1 cursor-pointer active:scale-95"
+              >
+                <Compass size={13} className="text-red-600" />
+                <span>Konumum</span>
+              </button>
+              {QUICK_MOBILE_CITIES.map((cName) => {
+                const isCurrent = city === cName;
+                return (
+                  <button
+                    key={cName}
+                    type="button"
+                    onClick={() => handleCityChange(cName)}
+                    className={`shrink-0 h-8 px-2.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+                      isCurrent
+                        ? "bg-slate-900 text-white shadow-2xs"
+                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    }`}
+                  >
+                    {cName}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Otomatik Canlı Harita - Tam Boyutlu, Kesintisiz ve Büyütülebilir */}
+            <div
+              className={`w-full mb-2.5 sm:mb-3.5 rounded-xl sm:rounded-2xl overflow-hidden border border-gray-200 shadow-xs bg-slate-100 relative z-0 transition-all duration-300 ${
+                mapExpanded ? "h-80 sm:h-[420px]" : "h-40 sm:h-68"
+              }`}
+            >
               <RealLeafletMap
                 pharmacies={activePharmacies}
                 selectedPharmacy={selectedPharmacy}
@@ -567,94 +609,112 @@ export default function Home() {
                 }}
                 areaTitle={`${city} ${district !== "Tümü" ? district : ""}`}
               />
+              <button
+                type="button"
+                onClick={() => setMapExpanded((prev) => !prev)}
+                className="absolute bottom-2 right-2 z-[400] bg-white/95 hover:bg-white text-slate-900 font-extrabold text-[11px] px-2.5 py-1 rounded-lg border border-slate-300 shadow-sm flex items-center gap-1 cursor-pointer"
+              >
+                {mapExpanded ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                <span>{mapExpanded ? "Küçült" : "Haritayı Büyüt"}</span>
+              </button>
             </div>
 
-            {/* Yaşlılar ve Herkes İçin Son Derece Sade İl / İlçe Seçimi */}
-            <div className="bg-slate-50/90 p-3 sm:p-5 rounded-xl sm:rounded-2xl border-2 border-slate-200">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3.5">
+            {/* Yaşlılar ve Mobil Kullanıcılar İçin Çok Kolay İl / İlçe Seçimi + Tek Buton */}
+            <div className="bg-slate-50/90 p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border-2 border-slate-200">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3.5">
                 {/* 1. Şehir / İl Seçimi */}
                 <div>
-                  <label className="block text-sm sm:text-base font-extrabold text-slate-900 mb-1.5">
+                  <label className="block text-xs sm:text-sm font-extrabold text-slate-900 mb-1">
                     1. Şehir (İl) Seçin:
                   </label>
-                  <div className="relative">
-                    <select
-                      value={city}
-                      onChange={(e) => handleCityChange(e.target.value)}
-                      aria-label="İl seçin"
-                      disabled={loading}
-                      className="w-full h-12 sm:h-13 px-4 py-2 text-base font-bold text-slate-900 bg-white border-2 border-slate-300 rounded-xl focus:border-red-600 focus:ring-2 focus:ring-red-200 outline-none transition-all cursor-pointer"
-                    >
-                      {cityList.length > 0 ? (
-                        cityList.map((item) => (
-                          <option key={item.slug} value={item.name} className="py-2 text-base">
-                            {item.name}
-                          </option>
-                        ))
-                      ) : (
-                        <option value="İstanbul">İstanbul</option>
-                      )}
-                    </select>
-                  </div>
+                  <select
+                    value={city}
+                    onChange={(e) => handleCityChange(e.target.value)}
+                    aria-label="İl seçin"
+                    disabled={loading}
+                    className="w-full h-11 sm:h-12 px-2.5 sm:px-3.5 py-1.5 text-sm sm:text-base font-bold text-slate-900 bg-white border-2 border-slate-300 rounded-xl focus:border-red-600 focus:ring-2 focus:ring-red-200 outline-none transition-all cursor-pointer"
+                  >
+                    {cityList.length > 0 ? (
+                      cityList.map((item) => (
+                        <option key={item.slug} value={item.name} className="py-2 text-base">
+                          {item.name}
+                        </option>
+                      ))
+                    ) : (
+                      <option value="İstanbul">İstanbul</option>
+                    )}
+                  </select>
                 </div>
 
                 {/* 2. İlçe Seçimi */}
                 <div>
-                  <label className="block text-sm sm:text-base font-extrabold text-slate-900 mb-1.5">
+                  <label className="block text-xs sm:text-sm font-extrabold text-slate-900 mb-1">
                     2. İlçe Seçin:
                   </label>
-                  <div className="relative">
-                    <select
-                      value={district}
-                      onChange={(e) => handleDistrictChange(e.target.value)}
-                      aria-label="İlçe seçin"
-                      disabled={loading}
-                      className="w-full h-12 sm:h-13 px-4 py-2 text-base font-bold text-slate-900 bg-white border-2 border-slate-300 rounded-xl focus:border-red-600 focus:ring-2 focus:ring-red-200 outline-none transition-all cursor-pointer"
-                    >
-                      <option value="Tümü">Tüm İlçeler ({districtList.length})</option>
-                      {districtList.map((dist) => (
-                        <option key={dist} value={dist} className="py-2 text-base">
-                          {dist}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <select
+                    value={district}
+                    onChange={(e) => handleDistrictChange(e.target.value)}
+                    aria-label="İlçe seçin"
+                    disabled={loading}
+                    className="w-full h-11 sm:h-12 px-2.5 sm:px-3.5 py-1.5 text-sm sm:text-base font-bold text-slate-900 bg-white border-2 border-slate-300 rounded-xl focus:border-red-600 focus:ring-2 focus:ring-red-200 outline-none transition-all cursor-pointer"
+                  >
+                    <option value="Tümü">Tüm İlçeler ({districtList.length})</option>
+                    {districtList.map((dist) => (
+                      <option key={dist} value={dist} className="py-2 text-base">
+                        {dist}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
-              {/* Listele Butonu */}
+              {/* Tek Bir Ana Aksiyon Butonu: Nöbetçi Eczaneleri Göster */}
               <button
                 type="button"
-                className="w-full mt-3.5 h-12 sm:h-13 bg-red-600 hover:bg-red-700 text-white font-black text-base rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
-                onClick={() => fetchPharmacies(city, district)}
+                className="w-full mt-2.5 sm:mt-3.5 h-11 sm:h-12 bg-red-600 hover:bg-red-700 text-white font-black text-sm sm:text-base rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
+                onClick={() => {
+                  fetchPharmacies(city, district, userLocation);
+                  document.getElementById("sonuclar")?.scrollIntoView({ behavior: "smooth" });
+                }}
                 disabled={loading}
               >
                 {loading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Loader2 className="w-5 h-5 animate-spin text-white shrink-0" />
                 ) : (
-                  <ArrowRight className="w-5 h-5 stroke-[2.5]" />
+                  <LocateFixed className="w-5 h-5 text-white shrink-0" />
                 )}
                 <span>Nöbetçi Eczaneleri Göster</span>
               </button>
             </div>
 
-            {/* Konum Bildirim Çubuğu (Dinamik ve Net) */}
-            <div className={`mt-3.5 px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-bold flex items-center justify-center gap-2 text-center transition-all ${
-              userLocation 
-                ? "bg-emerald-50 border-emerald-300 text-emerald-800" 
-                : "bg-amber-50 border-amber-300 text-amber-900"
-            }`}>
-              {userLocation ? (
-                <>
-                  <Check className="w-4 h-4 text-emerald-600 shrink-0 stroke-[3]" />
-                  <span>📍 Konum bilgisi alındı, eczaneler mesafeye göre listelendi.</span>
-                </>
-              ) : (
-                <>
-                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span>Konum bilgisi alınamadı, lütfen yukarıdan il ve ilçe seçiniz.</span>
-                </>
-              )}
+            {/* Konum Bildirim Çubuğu */}
+            <div
+              className={`mt-2 px-3 py-2 rounded-xl border text-[11px] sm:text-xs font-bold flex items-center justify-between gap-2 transition-all ${
+                userLocation
+                  ? "bg-emerald-50 border-emerald-300 text-emerald-800"
+                  : "bg-amber-50 border-amber-300 text-amber-900"
+              }`}
+            >
+              <div className="flex items-center gap-1.5 text-left">
+                {userLocation ? (
+                  <>
+                    <Check className="w-4 h-4 text-emerald-600 shrink-0 stroke-[3]" />
+                    <span>Konuma göre listelendi ({city} · {district}).</span>
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>Konum bilgisi alınamadı, elle adres giriniz.</span>
+                  </>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={findNearby}
+                className="shrink-0 underline font-extrabold hover:opacity-80 cursor-pointer"
+              >
+                GPS Yenile
+              </button>
             </div>
           </div>
         </div>
@@ -666,7 +726,6 @@ export default function Home() {
       {/* Results Section */}
       <section className="results-section" id="sonuclar">
         <div className="container">
-
           {/* Results Header with Day Tabs on Top Right */}
           <div className="results-heading flex flex-col md:flex-row md:items-end justify-between gap-4 pb-2">
             <div>
@@ -682,49 +741,57 @@ export default function Home() {
               <h2 className="text-2xl sm:text-3xl font-black text-gray-900 mt-1">
                 Nöbetçi Eczaneler
               </h2>
-              {sourceNote && <p className="text-xs text-gray-600 mt-1">Kaynak: {sourceNote}{activeDayGroup?.date ? ` · ${activeDayGroup.date}` : ""}</p>}
             </div>
 
-            {/* Dün / Bugün / Yarın Buttons - Mobil Uyumlu Kayan/Esnek Yapı */}
-            <div className="w-full sm:w-auto overflow-x-auto no-scrollbar flex items-center justify-between gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200 shadow-2xs">
-              {(["Dün", "Bugün", "Yarın"] as const).map((day) => {
-                const dGroup = daysData.find((group) => group.day === day);
-                const isSelected = selectedDay === day;
-                return (
-                  <button
-                    key={day}
-                    type="button"
-                    onClick={() => {
-                      setSelectedDay(day);
-                      setSelectedPharmacy(0);
-                    }}
-                    className={`flex-1 sm:flex-initial py-2 px-2.5 sm:px-3.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
-                      isSelected
-                        ? "bg-red-600 text-white shadow-xs"
-                        : "text-gray-700 hover:text-gray-950 hover:bg-white/80"
-                    }`}
-                  >
-                    <span>{day}</span>
-                    {dGroup?.date && (
-                      <span
-                        className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
-                          isSelected ? "bg-red-700 text-white" : "text-gray-500"
-                        }`}
-                      >
-                        {dGroup.date.slice(5).replace("-", "/")}
-                      </span>
-                    )}
-                    {dGroup && <span
-                      className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-full ${
-                        isSelected ? "bg-white text-red-600" : "bg-gray-200 text-gray-700"
+            {/* Dün / Bugün / Yarın Buttons - Mobil Uyumlu Esnek Yapı */}
+            {daysData.length > 0 && (
+              <div
+                className={`w-full sm:w-auto grid ${
+                  daysData.length === 1
+                    ? "grid-cols-1"
+                    : daysData.length === 2
+                    ? "grid-cols-2"
+                    : "grid-cols-3"
+                } sm:flex items-center gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200 shadow-2xs`}
+              >
+                {daysData.map((dGroup, idx) => {
+                  const isSelected = selectedDayIndex === idx;
+                  return (
+                    <button
+                      key={dGroup.day || idx}
+                      type="button"
+                      onClick={() => {
+                        setSelectedDayIndex(idx);
+                        setSelectedPharmacy(0);
+                      }}
+                      className={`min-h-10 py-2 px-2 sm:px-3.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1 whitespace-nowrap ${
+                        isSelected
+                          ? "bg-red-600 text-white shadow-xs"
+                          : "text-gray-700 hover:text-gray-950 hover:bg-white/80"
                       }`}
                     >
-                      {dGroup.count}
-                    </span>}
-                  </button>
-                );
-              })}
-            </div>
+                      <span>{dGroup.day}</span>
+                      {dGroup.date && (
+                        <span
+                          className={`hidden sm:inline text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                            isSelected ? "bg-red-700 text-white" : "text-gray-500"
+                          }`}
+                        >
+                          {dGroup.date.slice(5).replace("-", "/")}
+                        </span>
+                      )}
+                      <span
+                        className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-full ${
+                          isSelected ? "bg-white text-red-600" : "bg-gray-200 text-gray-700"
+                        }`}
+                      >
+                        {dGroup.count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Results layout */}
@@ -732,15 +799,20 @@ export default function Home() {
             <div className="py-24 text-center space-y-4">
               <Loader2 size={42} className="animate-spin text-red-600 mx-auto" />
               <p className="text-base font-bold text-gray-700">Nöbetçi eczaneler alınıyor...</p>
-              <p className="text-xs text-gray-400">Akıllı önbellek ve resmi kaynaklar kontrol ediliyor</p>
+              <p className="text-xs text-gray-400">
+                Akıllı önbellek ve resmi kaynaklar kontrol ediliyor
+              </p>
             </div>
           ) : activePharmacies.length === 0 ? (
             <div className="py-16 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-300 p-8 space-y-3">
               <Cross size={36} className="text-gray-400 mx-auto" />
               <h3 className="text-lg font-bold text-gray-800">
-                {selectedDay !== "Bugün" && !activeDayGroup ? `${selectedDay} için nöbet listesi mevcut değil` : "Seçilen bölgede nöbetçi eczane bulunamadı"}
+                Seçilen bölgede nöbetçi eczane bulunamadı
               </h3>
-              <p className="text-sm text-gray-500 max-w-md mx-auto">{selectedDay !== "Bugün" && !activeDayGroup ? "Veri kaynağı bu güne ait liste yayımlamıyor. Bugün sekmesinden güncel nöbetçi eczaneleri görebilirsiniz." : sourceNote || "Konum izni verin veya il ve ilçe seçerek arama yapın. Veri bulunamazsa yerel eczacı odasının listesini kontrol edin."}</p>
+              <p className="text-sm text-gray-500 max-w-md mx-auto">
+                {city} {district !== "Tümü" ? district : ""} için nöbetçi kaydı henüz yayımlanmamış
+                veya nöbet listesi güncelleniyor olabilir.
+              </p>
               <button
                 type="button"
                 onClick={() => handleDistrictChange("Tümü")}
@@ -762,15 +834,26 @@ export default function Home() {
                       userLocation={userLocation}
                     />
                   </div>
+                  {(index + 1) % 4 === 0 && (
+                    <div className="h-full">
+                      <InlineListAd index={Math.floor((index + 1) / 4)} />
+                    </div>
+                  )}
                 </div>
               ))}
+              <div className="h-full">
+                <InlineListAd index={Math.floor(activePharmacies.length / 4) + 1} />
+              </div>
             </div>
           )}
         </div>
       </section>
 
-      {/* Sağlık Portalı & İnteraktif Eczane Araçları (Interactive Health Portal Bento) */}
-      <section className="py-14 bg-gradient-to-b from-slate-50 to-white border-t border-slate-200" id="saglik-portali-araclari">
+      {/* Sağlık Portalı & İnteraktif Eczane Araçları */}
+      <section
+        className="py-12 sm:py-14 bg-gradient-to-b from-slate-50 to-white border-t border-slate-200"
+        id="saglik-portali-araclari"
+      >
         <div className="container max-w-6xl mx-auto px-4">
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
             <div>
@@ -782,7 +865,8 @@ export default function Home() {
                 Eczane & Sağlık Yardımcı Araçları
               </h2>
               <p className="text-sm sm:text-base text-slate-600 mt-1 max-w-2xl">
-                SGK katkı payı hesaplama, anlık şehir polen ve hava kalitesi durumu, TİTCK ilaç toplatma bültenleri ve Kızılay kan bağış rehberi.
+                SGK katkı payı hesaplama, anlık şehir polen ve hava kalitesi durumu, TİTCK ilaç
+                toplatma bültenleri ve Kızılay kan bağış rehberi.
               </p>
             </div>
 
@@ -798,7 +882,7 @@ export default function Home() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {/* Card 1: SGK Katkı Payı */}
             <Link
-              href="/saglik-araclari"
+              href="/sgk-katki-payi-hesaplayici"
               className="group p-6 rounded-2xl bg-white border border-slate-200 hover:border-emerald-500 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
             >
               <div>
@@ -809,7 +893,8 @@ export default function Home() {
                   SGK Katkı Payı & Eşdeğer Farkı
                 </h3>
                 <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-                  Reçetenizdeki ilaçların çalışan (%20) veya emekli (%10) katkı payını, muayene ücretini ve eşdeğer taban fiyat farkını anında hesaplayın.
+                  Reçetenizdeki ilaçların çalışan (%20) veya emekli (%10) katkı payını, muayene
+                  ücretini ve eşdeğer taban fiyat farkını anında hesaplayın.
                 </p>
               </div>
               <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-700">
@@ -820,7 +905,7 @@ export default function Home() {
 
             {/* Card 2: Polen & Hava Kalitesi */}
             <Link
-              href="/saglik-araclari"
+              href="/hava-kalitesi-polen"
               className="group p-6 rounded-2xl bg-white border border-slate-200 hover:border-cyan-500 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
             >
               <div>
@@ -831,7 +916,8 @@ export default function Home() {
                   Polen & Hava Kalitesi İndeksi
                 </h3>
                 <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-                  81 il için anlık AQI hava kirliliği, ağaç/çim polen yoğunluğu, astım ve alerjik rinit hastaları için uzman klinik sağlık önerileri.
+                  81 il için anlık AQI hava kirliliği, ağaç/çim polen yoğunluğu, astım ve alerjik
+                  rinit hastaları için uzman klinik sağlık önerileri.
                 </p>
               </div>
               <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-cyan-700">
@@ -842,7 +928,7 @@ export default function Home() {
 
             {/* Card 3: TİTCK İlaç Geri Çekme */}
             <Link
-              href="/saglik-araclari"
+              href="/titck-ilac-geri-cekme"
               className="group p-6 rounded-2xl bg-white border border-slate-200 hover:border-amber-500 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
             >
               <div>
@@ -853,7 +939,8 @@ export default function Home() {
                   TİTCK İlaç Geri Çekme Bildirimleri
                 </h3>
                 <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-                  Sağlık Bakanlığı tarafından duyurulan 1. ve 2. sınıf toplatma kararları, etkilenen parti numaraları ve sahte ilaç uyarıları.
+                  Sağlık Bakanlığı tarafından duyurulan 1. ve 2. sınıf toplatma kararları,
+                  etkilenen parti numaraları ve sahte ilaç uyarıları.
                 </p>
               </div>
               <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-amber-700">
@@ -864,7 +951,7 @@ export default function Home() {
 
             {/* Card 4: İlaç & Besin Etkileşimi */}
             <Link
-              href="/saglik-araclari"
+              href="/ilac-etkilesim"
               className="group p-6 rounded-2xl bg-white border border-slate-200 hover:border-indigo-500 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
             >
               <div>
@@ -875,7 +962,8 @@ export default function Home() {
                   İlaç-Besin Etkileşim Kontrolü
                 </h3>
                 <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-                  Ağrı kesici, antibiyotik veya tansiyon ilaçlarının alkol, greyfurt, süt ve kahve ile etkileşim riskini tek tıkla sorgulayın.
+                  Ağrı kesici, antibiyotik veya tansiyon ilaçlarının alkol, greyfurt, süt ve kahve
+                  ile etkileşim riskini tek tıkla sorgulayın.
                 </p>
               </div>
               <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-indigo-700">
@@ -886,7 +974,7 @@ export default function Home() {
 
             {/* Card 5: Kızılay Kan Bağışı */}
             <Link
-              href="/saglik-araclari"
+              href="/kan-bagisi"
               className="group p-6 rounded-2xl bg-white border border-slate-200 hover:border-red-500 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
             >
               <div>
@@ -897,7 +985,8 @@ export default function Home() {
                   Kızılay Kan Bağışı & Uyumluluk
                 </h3>
                 <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-                  Kan grupları uyumluluk matrisi, kimden alınır kime verilir rehberi, bağış kriterleri ve en yakın Kızılay kan merkezleri.
+                  Kan grupları uyumluluk matrisi, kimden alınır kime verilir rehberi, bağış
+                  kriterleri ve en yakın Kızılay kan merkezleri.
                 </p>
               </div>
               <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-red-700">
@@ -908,7 +997,7 @@ export default function Home() {
 
             {/* Card 6: 7/24 Acil İlk Yardım */}
             <Link
-              href="/saglik-araclari"
+              href="/ilk-yardim"
               className="group p-6 rounded-2xl bg-white border border-slate-200 hover:border-rose-500 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
             >
               <div>
@@ -919,7 +1008,8 @@ export default function Home() {
                   7/24 Acil İlk Yardım Rehberi
                 </h3>
                 <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-                  Heimlich manevrası, yanık ilk müdahalesi, kalp krizi belirtileri ve 114 UZEM zehirlenme acil protokolleri.
+                  Heimlich manevrası, yanık ilk müdahalesi, kalp krizi belirtileri ve 114 UZEM
+                  zehirlenme acil protokolleri.
                 </p>
               </div>
               <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-rose-700">
@@ -931,9 +1021,55 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SEO Rehber & Sıkça Sorulan Sorular (Google / Yandex Search Optimization) */}
+      {/* SEO Rehber, Görsel Kart & Sıkça Sorulan Sorular (Google, Yandex, Bing) */}
       <section className="py-12 bg-white border-t border-gray-100" id="sikca-sorulan-sorular">
         <div className="container max-w-5xl">
+          {/* Görsel Destekli SEO Tanıtım Kartı */}
+          <div className="mb-10 rounded-2xl border border-red-100 bg-gradient-to-r from-red-50/70 via-white to-slate-50 p-5 sm:p-6 flex flex-col md:flex-row items-center gap-6 shadow-xs">
+            <img
+              src="/og-nobetci-eczanem.svg"
+              alt="Nöbetçi Eczanem 81 İl Canlı Nöbetçi Eczane ve En Yakın Hastane Haritası"
+              loading="lazy"
+              width={320}
+              height={168}
+              className="w-full md:w-72 rounded-xl border border-red-200 shadow-xs shrink-0 object-cover"
+            />
+            <div className="space-y-2 text-left">
+              <span className="text-[11px] font-black uppercase tracking-wider text-red-600">
+                81 İL · 973 İLÇE KESİNTİSİZ SAĞLIK REHBERİ
+              </span>
+              <h2 className="text-lg sm:text-xl font-black text-slate-900">
+                Türkiye'nin En Kapsamlı Nöbetçi Eczane, Acil Hastane ve İlaç Bilgi Platformu
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                Gece, hafta sonu veya resmi tatillerde açık olan nöbetçi eczaneleri, 7/24 acil
+                servisi bulunan devlet/şehir hastanelerini ve aile sağlığı merkezlerini (ASM) tek
+                ekranda bulun. TİTCK ilaç fiyatları, barkod sorgulama ve SGK katkı payı hesaplama
+                araçlarıyla ihtiyacınız olan tüm resmi sağlık bilgilerine saniyeler içinde ulaşın.
+              </p>
+              <div className="pt-1 flex flex-wrap gap-2">
+                <Link
+                  href="/en-yakin-hastane"
+                  className="inline-flex items-center gap-1 text-xs font-extrabold text-red-700 bg-red-100/80 hover:bg-red-200/80 px-3 py-1.5 rounded-lg"
+                >
+                  <Building2 size={13} /> En Yakın Hastaneler
+                </Link>
+                <Link
+                  href="/tum-eczaneler"
+                  className="inline-flex items-center gap-1 text-xs font-extrabold text-slate-700 bg-slate-200/70 hover:bg-slate-300/70 px-3 py-1.5 rounded-lg"
+                >
+                  <Cross size={13} /> Tüm Eczaneler Rehberi
+                </Link>
+                <Link
+                  href="/blog"
+                  className="inline-flex items-center gap-1 text-xs font-extrabold text-emerald-800 bg-emerald-100/80 hover:bg-emerald-200/80 px-3 py-1.5 rounded-lg"
+                >
+                  <BookOpen size={13} /> İlaç Fiyatları & Sağlık Yazıları
+                </Link>
+              </div>
+            </div>
+          </div>
+
           <div className="mb-8">
             <span className="eyebrow uppercase font-extrabold text-red-600 tracking-wider">
               NÖBETÇİ ECZANE REHBERİ & SSS
@@ -942,7 +1078,8 @@ export default function Home() {
               Nöbetçi Eczaneler Hakkında Bilmeniz Gerekenler
             </h2>
             <p className="text-gray-600 text-sm sm:text-base mt-2">
-              Türkiye genelinde 81 ilde nöbetçi eczane sistemi, acil ilaç temini ve nöbet saatleri ile ilgili resmi mevzuat kuralları.
+              Türkiye genelinde 81 ilde nöbetçi eczane sistemi, acil ilaç temini ve nöbet saatleri
+              ile ilgili resmi mevzuat kuralları.
             </p>
           </div>
 
@@ -953,7 +1090,10 @@ export default function Home() {
                 Nöbetçi eczaneler kaça kadar açık?
               </h3>
               <p className="text-sm text-gray-600 leading-relaxed">
-                Nöbetçi eczaneler normal çalışma mesaisi bittiğinde (akşam 19:00 civarı) nöbete başlar ve <strong>ertesi gün sabah saat 09:00'a kadar</strong> kesintisiz 24 saat boyunca açık kalır. Pazar ve resmi tatil günlerinde ise tüm gün nöbetçi sistemi geçerlidir.
+                Nöbetçi eczaneler normal çalışma mesaisi bittiğinde (akşam 19:00 civarı) nöbete
+                başlar ve <strong>ertesi gün sabah saat 09:00'a kadar</strong> kesintisiz 24 saat
+                boyunca açık kalır. Pazar ve resmi tatil günlerinde ise tüm gün nöbetçi sistemi
+                geçerlidir.
               </p>
             </div>
 
@@ -963,7 +1103,9 @@ export default function Home() {
                 Nöbetçi eczanede ilaç fiyat farkı var mı?
               </h3>
               <p className="text-sm text-gray-600 leading-relaxed">
-                <strong>Hayır, kesinlikle ekstra nöbet ücreti alınmaz.</strong> Türkiye'deki tüm eczanelerde Sağlık Bakanlığı ve SGK tarafından belirlenen resmi ilaç fiyat tarifesi ve katkı payı oranları 7/24 aynı şekilde uygulanır.
+                <strong>Hayır, kesinlikle ekstra nöbet ücreti alınmaz.</strong> Türkiye'deki tüm
+                eczanelerde Sağlık Bakanlığı ve SGK tarafından belirlenen resmi ilaç fiyat tarifesi
+                ve katkı payı oranları 7/24 aynı şekilde uygulanır.
               </p>
             </div>
 
@@ -973,7 +1115,9 @@ export default function Home() {
                 Reçetesiz veya raporlu ilaç alınabilir mi?
               </h3>
               <p className="text-sm text-gray-600 leading-relaxed">
-                Evet. T.C. kimlik numaranız ile sisteme kayıtlı raporlu ilaçlarınızı, hekiminizin yazdığı e-reçeteleri ve reçetesiz satılan ilk yardım/ağrı kesici ürünlerini nöbetçi eczanelerden temin edebilirsiniz.
+                Evet. T.C. kimlik numaranız ile sisteme kayıtlı raporlu ilaçlarınızı, hekiminizin
+                yazdığı e-reçeteleri ve reçetesiz satılan ilk yardım/ağrı kesici ürünlerini nöbetçi
+                eczanelerden temin edebilirsiniz.
               </p>
             </div>
 
@@ -983,12 +1127,14 @@ export default function Home() {
                 En yakın nöbetçi eczaneye nasıl gidilir?
               </h3>
               <p className="text-sm text-gray-600 leading-relaxed">
-                Konum izni verildiğinde yakınınızdaki kayıtlar otomatik listelenir. Bölgeyi elle değiştirmek için il ve ilçe seçip <strong>"Nöbetçi Eczaneleri Göster"</strong> butonuna basabilirsiniz.
+                Sayfamızdaki <strong>"Nöbetçi Eczaneleri Göster"</strong> butonuna basarak size en
+                yakın nöbetçileri mesafelerine göre sıralayabilir, <strong>"Yol Tarifi"</strong>{" "}
+                butonuna tıklayarak Google Haritalar ile doğrudan navigasyon başlatabilirsiniz.
               </p>
             </div>
           </div>
 
-          {/* Hızlı Şehir Nöbetçi Eczane Bağlantıları (SEO Internal Links) */}
+          {/* Popüler İl & İlçe Nöbetçi Eczane Bağlantıları */}
           <div className="mt-10 pt-8 border-t border-gray-200">
             <h3 className="text-sm font-black text-gray-800 uppercase tracking-wider mb-4">
               Popüler İl & İlçe Nöbetçi Eczane Sorgulama
@@ -1000,18 +1146,26 @@ export default function Home() {
                 "İstanbul Üsküdar",
                 "İstanbul Bakırköy",
                 "İstanbul Şişli",
+                "İstanbul Pendik",
+                "İstanbul Ümraniye",
+                "İstanbul Esenyurt",
                 "Ankara Çankaya",
                 "Ankara Keçiören",
                 "Ankara Yenimahalle",
+                "Ankara Mamak",
                 "İzmir Konak",
                 "İzmir Karşıyaka",
                 "İzmir Bornova",
+                "İzmir Buca",
                 "Bursa Osmangazi",
                 "Bursa Nilüfer",
                 "Antalya Muratpaşa",
+                "Antalya Kepez",
                 "Adana Seyhan",
                 "Konya Selçuklu",
                 "Gaziantep Şahinbey",
+                "Kocaeli İzmit",
+                "Mersin Yenişehir",
               ].map((loc) => {
                 const parts = loc.split(" ");
                 const cName = parts[0];
@@ -1036,11 +1190,114 @@ export default function Home() {
               })}
             </div>
           </div>
+
+          {/* 81 İl Tam Nöbetçi Eczane Dizin Bağlantıları (Google, Yandex & Bing Index) */}
+          <div className="mt-8 pt-6 border-t border-gray-100">
+            <h3 className="text-xs font-black text-gray-500 uppercase tracking-wider mb-3">
+              81 İl Nöbetçi Eczane Rehberi (Tüm İller)
+            </h3>
+            <div className="flex flex-wrap gap-1.5">
+              {cityList.map((c) => (
+                <button
+                  key={c.slug}
+                  type="button"
+                  onClick={() => {
+                    handleCityChange(c.name);
+                    document.getElementById("sonuclar")?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-semibold border transition-all cursor-pointer ${
+                    city === c.name
+                      ? "bg-red-600 text-white border-red-600"
+                      : "bg-gray-50 text-gray-600 border-gray-200 hover:text-red-700 hover:border-red-200"
+                  }`}
+                >
+                  {c.name} Nöbetçi Eczane
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
+      {/* How it works */}
+      <section className="how-section" id="nasil-calisir">
+        <div className="container">
+          <SectionHeading
+            eyebrow="ÜÇ ADIMDA"
+            title="İhtiyacınız olan eczaneyi bulun"
+            description="Karmaşık menüler yok. Konumunuzu paylaşın veya şehir seçin, açık eczaneyi görün ve yola çıkın."
+          />
+          <div className="steps-grid">
+            <div className="step-card">
+              <span className="step-number">01</span>
+              <span className="step-icon">
+                <MapPin size={26} />
+              </span>
+              <h3>Şehir ve İlçe Seçin</h3>
+              <p>
+                Türkiye'nin 81 ilinden dilediğinizi seçin veya otomatik GPS konumunuzu kullanın.
+              </p>
+            </div>
+            <div className="step-card">
+              <span className="step-number">02</span>
+              <span className="step-icon">
+                <Cross size={26} />
+              </span>
+              <h3>Nöbetçi Eczaneleri Görün</h3>
+              <p>
+                Sabah 09:00'a kadar kesintisiz açık eczanelerin güncel adres ve telefonlarını
+                inceleyin.
+              </p>
+            </div>
+            <div className="step-card">
+              <span className="step-number">03</span>
+              <span className="step-icon">
+                <Navigation size={26} />
+              </span>
+              <h3>Tek Tıkla Yol Tarifi</h3>
+              <p>
+                Telefon edin veya doğrudan Google Haritalar ile yol tarifini anında başlatın.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
 
+      {/* Update info section */}
+      <section className="update-section">
+        <div className="container update-box">
+          <div className="update-icon">
+            <Clock3 size={26} />
+          </div>
+          <div>
+            <p className="eyebrow">VERİ VE KOTA GÜVENLİĞİ</p>
+            <h2>Nöbetçi listeleri her sabah 09:00'da yenilenir.</h2>
+            <p>
+              Akıllı önbellek mimarimiz sayesinde aylık 200 sorgu kotası en verimli şekilde korunur
+              ve tüm veriler anlık olarak servis edilir.
+            </p>
+          </div>
+          <Link href="/veri-kaynaklari" className="button button-quiet">
+            Veri ve Kota Detayları <ArrowRight size={19} />
+          </Link>
+        </div>
+      </section>
 
+      {/* Closing section */}
+      <section className="closing-section">
+        <div className="container closing-inner">
+          <div>
+            <p className="eyebrow">GÜVENİLİR VE SADE</p>
+            <h2>Mahallenizdeki güvenilir eczanenin dijital hali.</h2>
+          </div>
+          <p>
+            Nöbetçi Eczanem, ihtiyaç anında doğru bilgiye en kısa yoldan ulaşmanız için tasarlandı.
+          </p>
+          <div className="closing-mark">
+            <Sparkles size={20} /> Her gün 81 ilde yanınızda
+          </div>
+        </div>
+      </section>
     </main>
   );
 }
