@@ -383,8 +383,8 @@ export const ARTICLES_DATA: Article[] = [
 ];
 
 export default function Blog() {
-  const [activeTab, setActiveTab] = useState<"rehber" | "fiyatlar" | "recete" | "agrikesici">(
-    "rehber"
+  const [activeTab, setActiveTab] = useState<"fiyatlar" | "recete" | "agrikesici" | "rehber">(
+    "fiyatlar"
   );
   const [searchTerm, setSearchTerm] = useState("");
   const [medicineCategory, setMedicineCategory] = useState<string>("Tümü");
@@ -394,10 +394,11 @@ export default function Blog() {
 
   useEffect(() => {
     const tabTitles = {
-      rehber: "Sağlık, Nöbetçi Eczane, Hastane & İlaç Rehberi (Blog) | Nöbetçi Eczanem",
-      fiyatlar: "2026 Güncel İlaç Fiyatları, Barkod (GTIN) & SGK Katkı Payı Listesi | Nöbetçi Eczanem",
+      fiyatlar:
+        "2026 Güncel İlaç Fiyatları, İlaç Açıklamaları, Barkod & SGK Katkı Payı Rehberi | Nöbetçi Eczanem",
       recete: "Reçeteli ve Reçetesiz (OTC) Satılan İlaçlar Listesi | Nöbetçi Eczanem",
       agrikesici: "Sık Kullanılan Ağrı Kesiciler Karşılaştırma Tablosu | Nöbetçi Eczanem",
+      rehber: "Sağlık, Nöbetçi Eczane, Hastane & İlaç Rehberi (Blog) | Nöbetçi Eczanem",
     };
     document.title = tabTitles[activeTab];
   }, [activeTab]);
@@ -405,14 +406,18 @@ export default function Blog() {
   const medicineCategories = [
     "Tümü",
     "Ağrı Kesici & Ateş Düşürücü",
-    "Antibiyotik",
-    "Mide Koruyucu & Antiasit",
+    "Soğuk Algınlığı & Grip",
+    "Antibiyotik & Antiviral",
+    "Mide & Sindirim Sistemi",
     "Alerji & Antihistaminik",
-    "Kalp & Tansiyon",
-    "Diyabet & İnsülin",
-    "Vitamin & Mineral",
-    "Solunum & Astım",
-    "Göz & Kulak Damlası",
+    "Kalp, Tansiyon & Kolesterol",
+    "Diyabet, Tiroid & Hormon",
+    "Vitamin, Mineral & Kan Yapıcı",
+    "Solunum, Astım & Öksürük",
+    "Cilt, Krem & Merhem",
+    "Göz, Kulak & Burun",
+    "Kas Gevşetici & Romatizma",
+    "Nöroloji & Psikiyatri",
   ];
 
   const filteredMedicines = useMemo(() => {
@@ -424,7 +429,8 @@ export default function Blog() {
         med.name.toLocaleLowerCase("tr-TR").includes(q) ||
         med.activeIngredient.toLocaleLowerCase("tr-TR").includes(q) ||
         med.barcode.includes(q) ||
-        med.indications.toLocaleLowerCase("tr-TR").includes(q);
+        med.indications.toLocaleLowerCase("tr-TR").includes(q) ||
+        med.usageInstructions.toLocaleLowerCase("tr-TR").includes(q);
 
       return matchCat && matchSearch;
     });
@@ -448,40 +454,27 @@ export default function Blog() {
 
   return (
     <main className="pb-20 bg-slate-50 min-h-screen">
-      {/* Üst Sekme Seçici - Mobil Uyumlu 2x2 Grid / Masaüstü Yatay */}
-      <section className="bg-white border-b border-slate-200 py-3.5 px-3 sm:px-4 sticky top-[60px] lg:top-[68px] z-20 shadow-2xs">
-        <div className="container max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
-          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-1.5 w-full md:w-auto">
+      {/* Üst Sekme Seçici - Mobil Uyumlu 2x2 Grid (Tek Tıkla Tüm Sekmeler Görünür) */}
+      <section className="bg-white border-b border-slate-200 py-3 px-3 sm:px-4 sticky top-[60px] lg:top-[68px] z-20 shadow-2xs">
+        <div className="container max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 items-center gap-1.5 w-full md:w-auto">
             <button
               type="button"
-              onClick={() => setActiveTab("rehber")}
-              className={`min-h-11 px-3.5 py-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                activeTab === "rehber"
+              onClick={() => setActiveTab("fiyatlar")}
+              className={`min-h-11 px-3 py-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                activeTab === "fiyatlar"
                   ? "bg-red-600 text-white shadow-xs"
                   : "bg-slate-100 text-slate-700 hover:bg-slate-200"
               }`}
             >
-              <BookOpen size={15} className="shrink-0" />
-              <span className="truncate">Sağlık & Blog Yazıları</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("fiyatlar")}
-              className={`min-h-11 px-3.5 py-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                activeTab === "fiyatlar"
-                  ? "bg-slate-900 text-white shadow-xs"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-              }`}
-            >
               <DollarSign size={15} className="shrink-0" />
-              <span className="truncate">İlaç Fiyatları & Barkod</span>
+              <span className="truncate">İlaç Fiyatları ({MEDICINES_DATABASE.length})</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab("recete")}
-              className={`min-h-11 px-3.5 py-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              className={`min-h-11 px-3 py-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                 activeTab === "recete"
                   ? "bg-emerald-600 text-white shadow-xs"
                   : "bg-slate-100 text-slate-700 hover:bg-slate-200"
@@ -494,14 +487,27 @@ export default function Blog() {
             <button
               type="button"
               onClick={() => setActiveTab("agrikesici")}
-              className={`min-h-11 px-3.5 py-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              className={`min-h-11 px-3 py-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                 activeTab === "agrikesici"
                   ? "bg-blue-600 text-white shadow-xs"
                   : "bg-slate-100 text-slate-700 hover:bg-slate-200"
               }`}
             >
               <Pill size={15} className="shrink-0" />
-              <span className="truncate">Ağrı Kesiciler Tablosu</span>
+              <span className="truncate">Ağrı Kesiciler</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("rehber")}
+              className={`min-h-11 px-3 py-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                activeTab === "rehber"
+                  ? "bg-slate-900 text-white shadow-xs"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              <BookOpen size={15} className="shrink-0" />
+              <span className="truncate">Sağlık Makaleleri</span>
             </button>
           </div>
 
@@ -509,7 +515,7 @@ export default function Blog() {
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Makale, ilaç veya barkod ara..."
+              placeholder="İlaç adı, ne işe yarar, etken madde veya barkod..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full h-11 pl-9 pr-3 text-xs sm:text-sm font-bold border-2 border-slate-300 rounded-xl focus:outline-none focus:border-red-600 bg-slate-50 focus:bg-white"
@@ -518,8 +524,181 @@ export default function Blog() {
         </div>
       </section>
 
-      <div className="container max-w-6xl mx-auto px-3 sm:px-4 pt-5">
-        {/* 1. SAĞLIK, NÖBETÇİ ECZANE & E-DEVLET BLOG YAZILARI (SEO MAKALELERİ) */}
+      <div className="container max-w-6xl mx-auto px-3 sm:px-4 pt-4">
+        {/* 1. İLAÇ FİYATLARI, KULLANIM AÇIKLAMALARI VE BARKOD REHBERİ (İLK AÇILAN ANA SAYFA) */}
+        {activeTab === "fiyatlar" && (
+          <div className="space-y-4">
+            {/* Başlık & Mobil Tek Tık Kategori Filtreleri */}
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                <div>
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase text-red-700 bg-red-50 px-2.5 py-0.5 rounded-full border border-red-200 mb-1">
+                    <Pill size={12} /> 2026 TİTCK & SGK MEDULA İLAÇ REHBERİ
+                  </span>
+                  <h1 className="text-lg sm:text-2xl font-black text-slate-900">
+                    Güncel İlaç Fiyatları, Ne İşe Yarar & Kullanım Açıklamaları
+                  </h1>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="px-3 py-1.5 rounded-xl bg-slate-900 text-white text-xs font-black">
+                    {filteredMedicines.length} / {MEDICINES_DATABASE.length} İlaç
+                  </span>
+                </div>
+              </div>
+
+              {/* Mobilde Kaydırma Gerektirmeyen Tek Tıkla Tüm Kategoriler */}
+              <div>
+                <p className="text-[11px] font-extrabold text-slate-500 uppercase mb-1.5">
+                  Hızlı Kategori Seçimi (Tek Dokunuşla Filtrele):
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {medicineCategories.map((cat) => {
+                    const count =
+                      cat === "Tümü"
+                        ? MEDICINES_DATABASE.length
+                        : MEDICINES_DATABASE.filter((m) => m.category === cat).length;
+                    return (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setMedicineCategory(cat)}
+                        className={`px-2.5 py-1.5 rounded-xl text-[11px] sm:text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1 ${
+                          medicineCategory === cat
+                            ? "bg-red-600 text-white shadow-2xs"
+                            : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                        }`}
+                      >
+                        <span>{cat}</span>
+                        <span
+                          className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                            medicineCategory === cat
+                              ? "bg-red-800 text-white"
+                              : "bg-slate-200 text-slate-700"
+                          }`}
+                        >
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Mobil ve Masaüstü Uyumlu Detaylı İlaç Kartları (Açıklamalı, Barkodlu, Fiyatlı) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
+              {filteredMedicines.map((med, idx) => (
+                <article
+                  key={med.id}
+                  className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 hover:border-red-300 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between"
+                >
+                  <div>
+                    {/* Üst Başlık ve Fiyat Rozeti */}
+                    <div className="flex items-start justify-between gap-2.5 pb-3 border-b border-slate-100">
+                      <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                        <span className="w-7 h-7 rounded-lg bg-red-600 text-white font-black text-xs flex items-center justify-center shrink-0 mt-0.5">
+                          #{idx + 1}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <h2 className="text-sm sm:text-base font-black text-slate-900 leading-snug break-words">
+                            {med.name}
+                          </h2>
+                          <p className="text-xs font-bold text-red-700 mt-0.5">
+                            Etken Madde: {med.activeIngredient}
+                          </p>
+                          <p className="text-[11px] font-semibold text-slate-500 mt-0.5">
+                            {med.manufacturer} · {med.category}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <div className="font-mono font-black text-base sm:text-lg text-slate-900 bg-red-50 border border-red-200 px-2.5 py-1 rounded-xl text-red-700">
+                          {med.publicSalePrice.toFixed(2)} ₺
+                        </div>
+                        <span className="text-[10px] font-bold text-slate-500 block mt-0.5">
+                          SGK Payı: ~{med.patientCopayEstimated.toFixed(2)} ₺
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Detaylı İlaç Açıklaması (Ne İşe Yarar & Nasıl Kullanılır) */}
+                    <div className="my-3 space-y-2 text-xs leading-relaxed">
+                      <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-800">
+                        <strong className="font-black text-slate-900 block mb-0.5">
+                          💊 Ne İşe Yarar (Endikasyonlar):
+                        </strong>
+                        <p>{med.indications}</p>
+                      </div>
+
+                      <div className="p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200/80 text-emerald-950">
+                        <strong className="font-black text-emerald-900 block mb-0.5">
+                          🕒 Nasıl Kullanılır (Aç / Tok & Doz):
+                        </strong>
+                        <p>{med.usageInstructions}</p>
+                      </div>
+
+                      <div className="p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/80 text-amber-950">
+                        <strong className="font-black text-amber-900 block mb-0.5">
+                          ⚠️ Eczacı & Reçete Uyarısı:
+                        </strong>
+                        <p>{med.prescriptionWarning}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Alt Barkod, SGK ve Reçete Bilgisi */}
+                  <div className="pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                    <span className="font-mono font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded-lg">
+                      Barkod: {med.barcode}
+                    </span>
+
+                    <div className="flex items-center gap-1.5">
+                      {med.isReimbursedBySGK && (
+                        <span className="font-extrabold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
+                          ✓ SGK Öder
+                        </span>
+                      )}
+                      <span
+                        className={`font-black uppercase px-2 py-0.5 rounded-md ${
+                          med.prescriptionType.includes("Reçetesiz")
+                            ? "bg-blue-100 text-blue-900"
+                            : med.prescriptionType.includes("Yeşil")
+                            ? "bg-emerald-200 text-emerald-950"
+                            : "bg-amber-100 text-amber-900"
+                        }`}
+                      >
+                        {med.prescriptionType}
+                      </span>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            {filteredMedicines.length === 0 && (
+              <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center space-y-2">
+                <Pill size={36} className="text-slate-400 mx-auto" />
+                <h3 className="text-base font-black text-slate-900">Aranan kriterde ilaç bulunamadı</h3>
+                <p className="text-xs text-slate-500">
+                  Lütfen kategori filtresini "Tümü" yapın veya farklı bir ilaç/etken madde adı yazın.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMedicineCategory("Tümü");
+                    setSearchTerm("");
+                  }}
+                  className="button button-primary text-xs px-4 py-2 rounded-xl mt-2"
+                >
+                  Tüm İlaçları Göster ({MEDICINES_DATABASE.length})
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 2. SAĞLIK, NÖBETÇİ ECZANE & E-DEVLET BLOG YAZILARI (SEO MAKALELERİ) */}
         {activeTab === "rehber" && (
           <div className="space-y-6">
             {/* Görsel Hero Blog Başlığı */}
@@ -690,151 +869,6 @@ export default function Blog() {
                   </article>
                 );
               })}
-            </div>
-          </div>
-        )}
-
-        {/* 2. İLAÇ FİYATLARI VE BARKOD VERİTABANI (Mobil Kart + Masaüstü Tablo) */}
-        {activeTab === "fiyatlar" && (
-          <div className="space-y-5">
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
-                {medicineCategories.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setMedicineCategory(cat)}
-                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                      medicineCategory === cat
-                        ? "bg-red-600 text-white shadow-2xs"
-                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-
-              <span className="text-xs text-slate-500 font-bold">
-                Toplam <strong>{filteredMedicines.length}</strong> ilaç listeleniyor
-              </span>
-            </div>
-
-            {/* Mobil Görünüm: Kaydırma Gerektirmeyen Kartlar */}
-            <div className="grid grid-cols-1 gap-3 md:hidden">
-              {filteredMedicines.map((med) => (
-                <div
-                  key={med.id}
-                  className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-2"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <strong className="text-slate-900 font-black text-sm block">
-                        {med.name}
-                      </strong>
-                      <span className="text-[11px] text-slate-500 font-semibold">
-                        {med.activeIngredient} · {med.manufacturer}
-                      </span>
-                    </div>
-                    <span className="font-mono font-black text-sm text-red-700 bg-red-50 px-2.5 py-1 rounded-lg border border-red-200 shrink-0">
-                      {med.publicSalePrice.toFixed(2)} ₺
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
-                    <span className="font-mono text-[11px] text-slate-600">
-                      Barkod: {med.barcode}
-                    </span>
-                    <span
-                      className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${
-                        med.prescriptionType.includes("Reçetesiz")
-                          ? "bg-emerald-100 text-emerald-900"
-                          : "bg-amber-100 text-amber-900"
-                      }`}
-                    >
-                      {med.prescriptionType}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Masaüstü Tablo Görünümü */}
-            <div className="hidden md:block bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-              <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <DollarSign size={20} className="text-red-600" />
-                  <h2 className="text-base sm:text-lg font-black text-slate-900">
-                    TİTCK & SGK MEDULA Resmi İlaç Fiyat Listesi (KDV Dahil)
-                  </h2>
-                </div>
-                <span className="text-[11px] font-bold text-slate-500">2026 Güncel Veri</span>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 border-b border-slate-200">
-                    <tr className="text-slate-700 font-extrabold uppercase text-[11px]">
-                      <th className="py-3 px-4">İlaç Adı & Üretici</th>
-                      <th className="py-3 px-4">Barkod (GTIN) & Etken Madde</th>
-                      <th className="py-3 px-4">Reçete Durumu</th>
-                      <th className="py-3 px-4 text-right">Perakende Fiyatı (PSF)</th>
-                      <th className="py-3 px-4 text-right">SGK Katkı Payı (~%10)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredMedicines.map((med) => (
-                      <tr key={med.id} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="py-3 px-4">
-                          <strong className="text-slate-900 font-black text-sm block">
-                            {med.name}
-                          </strong>
-                          <span className="text-[11px] text-slate-500">
-                            {med.manufacturer} · {med.category}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className="font-mono font-bold text-slate-700 block">
-                            {med.barcode}
-                          </span>
-                          <span className="text-[11px] text-slate-600">
-                            {med.activeIngredient}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span
-                            className={`inline-block text-[10px] font-black uppercase px-2 py-0.5 rounded ${
-                              med.prescriptionType.includes("Reçetesiz")
-                                ? "bg-emerald-100 text-emerald-900 border border-emerald-300"
-                                : "bg-amber-100 text-amber-900 border border-amber-300"
-                            }`}
-                          >
-                            {med.prescriptionType}
-                          </span>
-                          {med.isReimbursedBySGK && (
-                            <span className="block text-[10px] font-bold text-emerald-700 mt-0.5">
-                              ✓ SGK Geri Ödemeli
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3 px-4 text-right font-mono font-black text-sm text-slate-900">
-                          {med.publicSalePrice.toFixed(2)} ₺
-                        </td>
-                        <td className="py-3 px-4 text-right font-mono font-bold text-xs text-red-700">
-                          ~{med.patientCopayEstimated.toFixed(2)} ₺
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="p-4 bg-slate-50 text-xs text-slate-600 border-t border-slate-100 flex items-start gap-2">
-                <Info size={16} className="text-slate-400 shrink-0 mt-0.5" />
-                <span>
-                  Fiyatlar Türkiye İlaç ve Tıbbi Cihaz Kurumu (TİTCK) resmi Fiyat Değerlendirme
-                  Komisyonu kararlarına ve SGK MEDULA eczane otomasyon sistemine uygundur.
-                </span>
-              </div>
             </div>
           </div>
         )}

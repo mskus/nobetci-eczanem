@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import {
   Activity,
   Wind,
@@ -137,110 +137,163 @@ export default function HealthPortalTools() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20">
-      {/* Top Banner Header */}
-      <div className="bg-gradient-to-r from-emerald-800 via-teal-800 to-cyan-900 text-white pt-10 pb-8 px-4 sm:px-6 shadow-md border-b border-emerald-700/50">
+      {/* Top Banner Header - Mobil Tek Ekranda Tek Tıkla Tüm Menüler ve Araçlar */}
+      <div className="bg-gradient-to-r from-emerald-800 via-teal-800 to-cyan-900 text-white pt-5 pb-5 px-3 sm:px-6 shadow-md border-b border-emerald-700/50">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-200 border border-emerald-400/30 text-xs font-semibold mb-2">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-200 border border-emerald-400/30 text-[11px] font-semibold mb-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-emerald-300" />
-                T.C. Sağlık Bakanlığı, SGK MEDULA & DSÖ Entegre Sağlık Portalı
+                İhtiyaç Sırasına Göre Düzenlenmiş Sağlık Portalı
               </div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+              <h1 className="text-xl sm:text-3xl font-black tracking-tight text-white">
                 Sağlık & Eczane Araçları Portalı
               </h1>
-              <p className="text-sm sm:text-base text-emerald-100/90 mt-1 max-w-2xl">
-                SGK reçete katkı payı hesaplama, anlık hava & polen kalitesi, TİTCK ilaç geri çekme uyarıları, ilaç etkileşim testi ve Kızılay kan bağışı rehberi.
+              <p className="text-xs sm:text-sm text-emerald-100/90 mt-1 max-w-2xl">
+                Aşağıdaki kutulardan istediğiniz sağlık aracını veya ana menüyü kaydırma yapmadan tek dokunuşla açabilirsiniz.
               </p>
             </div>
 
             {/* Quick Emergency Action Buttons */}
-            <div className="flex flex-wrap items-center gap-2.5">
+            <div className="grid grid-cols-2 sm:flex items-center gap-2 shrink-0">
               <a
                 href="tel:112"
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-sm shadow-lg shadow-red-900/30 transition-all transform active:scale-95"
+                className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs sm:text-sm shadow-lg transition-all active:scale-95"
               >
-                <Phone className="w-4 h-4 animate-pulse" />
-                112 Acil Yardım
+                <Phone className="w-4 h-4 animate-pulse shrink-0" />
+                <span>112 Acil</span>
               </a>
               <a
                 href="tel:114"
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm shadow-lg shadow-amber-900/30 transition-all transform active:scale-95"
+                className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs sm:text-sm shadow-lg transition-all active:scale-95"
               >
-                <AlertTriangle className="w-4 h-4" />
-                114 UZEM Zehir Danışma
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>114 Zehir Danışma</span>
               </a>
             </div>
           </div>
 
-          {/* Navigation Bar */}
-          <div className="mt-8 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none border-b border-emerald-600/40">
-            <button
-              onClick={() => setActiveTab("sgk-hesaplayici")}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-all ${
-                activeTab === "sgk-hesaplayici"
-                  ? "bg-white text-emerald-900 shadow-md font-bold"
-                  : "text-emerald-100 hover:bg-emerald-700/50"
-              }`}
-            >
-              <Calculator className="w-4 h-4 text-emerald-600" />
-              SGK Katkı Payı & Eşdeğer Farkı
-            </button>
-            <button
-              onClick={() => setActiveTab("hava-polen")}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-all ${
-                activeTab === "hava-polen"
-                  ? "bg-white text-emerald-900 shadow-md font-bold"
-                  : "text-emerald-100 hover:bg-emerald-700/50"
-              }`}
-            >
-              <Wind className="w-4 h-4 text-cyan-600" />
-              Polen & Hava Kalitesi İndeksi
-            </button>
-            <button
-              onClick={() => setActiveTab("titck-bildirim")}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-all ${
-                activeTab === "titck-bildirim"
-                  ? "bg-white text-emerald-900 shadow-md font-bold"
-                  : "text-emerald-100 hover:bg-emerald-700/50"
-              }`}
-            >
-              <ShieldAlert className="w-4 h-4 text-amber-600" />
-              TİTCK İlaç Geri Çekme & Güvenlik
-            </button>
-            <button
-              onClick={() => setActiveTab("etkilesim")}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-all ${
-                activeTab === "etkilesim"
-                  ? "bg-white text-emerald-900 shadow-md font-bold"
-                  : "text-emerald-100 hover:bg-emerald-700/50"
-              }`}
-            >
-              <Pill className="w-4 h-4 text-indigo-600" />
-              İlaç & Besin Etkileşim Kontrolü
-            </button>
-            <button
-              onClick={() => setActiveTab("kan-bagisi")}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-all ${
-                activeTab === "kan-bagisi"
-                  ? "bg-white text-emerald-900 shadow-md font-bold"
-                  : "text-emerald-100 hover:bg-emerald-700/50"
-              }`}
-            >
-              <Droplets className="w-4 h-4 text-red-600" />
-              Kızılay Kan Bağışı & Kan Grupları
-            </button>
-            <button
-              onClick={() => setActiveTab("ilk-yardim")}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-all ${
-                activeTab === "ilk-yardim"
-                  ? "bg-white text-emerald-900 shadow-md font-bold"
-                  : "text-emerald-100 hover:bg-emerald-700/50"
-              }`}
-            >
-              <HeartPulse className="w-4 h-4 text-rose-600" />
-              7/24 Acil İlk Yardım Kılavuzu
-            </button>
+          {/* Hızlı Ana Portal Kısayolları (En Çok İhtiyaç Duyulan 4 Ana Sayfa) */}
+          <div className="mt-4 pt-3 border-t border-emerald-700/60">
+            <p className="text-[10px] font-black uppercase tracking-wider text-emerald-200 mb-2">
+              Hızlı Ana Menüler (En Çok İhtiyaç Duyulanlar):
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <Link
+                href="/"
+                className="min-h-10 px-3 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs flex items-center gap-1.5 shadow-xs"
+              >
+                <MapPin className="w-4 h-4 shrink-0" />
+                <span className="truncate">1. Nöbetçi Eczaneler</span>
+              </Link>
+              <Link
+                href="/en-yakin-hastane"
+                className="min-h-10 px-3 py-2 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-black text-xs flex items-center gap-1.5 shadow-xs"
+              >
+                <HeartPulse className="w-4 h-4 shrink-0" />
+                <span className="truncate">2. En Yakın Hastane</span>
+              </Link>
+              <Link
+                href="/blog"
+                className="min-h-10 px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-xs"
+              >
+                <Pill className="w-4 h-4 shrink-0" />
+                <span className="truncate">3. İlaç Fiyatları & Rehber</span>
+              </Link>
+              <Link
+                href="/veri-kaynaklari"
+                className="min-h-10 px-3 py-2 rounded-xl bg-emerald-950/70 hover:bg-emerald-950 text-emerald-100 border border-emerald-500/40 font-black text-xs flex items-center gap-1.5 shadow-xs"
+              >
+                <Activity className="w-4 h-4 shrink-0 text-emerald-300" />
+                <span className="truncate">4. Token & Tüketim Raporu</span>
+              </Link>
+            </div>
+          </div>
+
+          {/* 6 Sağlık Aracı Seçici - Mobilde Kaydırmasız 2x3 Grid (İnsanların İhtiyaç Sırasına Göre) */}
+          <div className="mt-4 pt-3 border-t border-emerald-700/60">
+            <p className="text-[10px] font-black uppercase tracking-wider text-emerald-200 mb-2">
+              Sağlık Portalı Hesaplama & Sorgulama Araçları (Tek Tıkla Seçin):
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveTab("sgk-hesaplayici")}
+                className={`min-h-12 p-2.5 rounded-xl text-left text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer border ${
+                  activeTab === "sgk-hesaplayici"
+                    ? "bg-white text-emerald-950 border-white shadow-md ring-2 ring-emerald-300"
+                    : "bg-emerald-900/60 text-white border-emerald-600/50 hover:bg-emerald-800/80"
+                }`}
+              >
+                <Calculator className="w-4 h-4 text-emerald-500 shrink-0" />
+                <span className="leading-tight">1. SGK İlaç Katkı Payı</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("ilk-yardim")}
+                className={`min-h-12 p-2.5 rounded-xl text-left text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer border ${
+                  activeTab === "ilk-yardim"
+                    ? "bg-white text-rose-950 border-white shadow-md ring-2 ring-rose-300"
+                    : "bg-emerald-900/60 text-white border-emerald-600/50 hover:bg-emerald-800/80"
+                }`}
+              >
+                <HeartPulse className="w-4 h-4 text-rose-400 shrink-0" />
+                <span className="leading-tight">2. 7/24 Acil İlk Yardım</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("etkilesim")}
+                className={`min-h-12 p-2.5 rounded-xl text-left text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer border ${
+                  activeTab === "etkilesim"
+                    ? "bg-white text-indigo-950 border-white shadow-md ring-2 ring-indigo-300"
+                    : "bg-emerald-900/60 text-white border-emerald-600/50 hover:bg-emerald-800/80"
+                }`}
+              >
+                <Pill className="w-4 h-4 text-indigo-400 shrink-0" />
+                <span className="leading-tight">3. İlaç & Besin Etkileşimi</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("kan-bagisi")}
+                className={`min-h-12 p-2.5 rounded-xl text-left text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer border ${
+                  activeTab === "kan-bagisi"
+                    ? "bg-white text-red-950 border-white shadow-md ring-2 ring-red-300"
+                    : "bg-emerald-900/60 text-white border-emerald-600/50 hover:bg-emerald-800/80"
+                }`}
+              >
+                <Droplets className="w-4 h-4 text-red-400 shrink-0" />
+                <span className="leading-tight">4. Kızılay Kan & Gruplar</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("titck-bildirim")}
+                className={`min-h-12 p-2.5 rounded-xl text-left text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer border ${
+                  activeTab === "titck-bildirim"
+                    ? "bg-white text-amber-950 border-white shadow-md ring-2 ring-amber-300"
+                    : "bg-emerald-900/60 text-white border-emerald-600/50 hover:bg-emerald-800/80"
+                }`}
+              >
+                <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0" />
+                <span className="leading-tight">5. TİTCK İlaç Toplatma</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("hava-polen")}
+                className={`min-h-12 p-2.5 rounded-xl text-left text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer border ${
+                  activeTab === "hava-polen"
+                    ? "bg-white text-cyan-950 border-white shadow-md ring-2 ring-cyan-300"
+                    : "bg-emerald-900/60 text-white border-emerald-600/50 hover:bg-emerald-800/80"
+                }`}
+              >
+                <Wind className="w-4 h-4 text-cyan-400 shrink-0" />
+                <span className="leading-tight">6. Hava Kalitesi & Polen</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

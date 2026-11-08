@@ -854,24 +854,24 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Sağlık Portalı & İnteraktif Eczane Araçları */}
+      {/* Sağlık Portalı & İnteraktif Eczane Araçları (İhtiyaç Sırasına Göre Sıralı) */}
       <section
-        className="py-12 sm:py-14 bg-gradient-to-b from-slate-50 to-white border-t border-slate-200"
+        className="py-10 sm:py-14 bg-gradient-to-b from-slate-50 to-white border-t border-slate-200"
         id="saglik-portali-araclari"
       >
         <div className="container max-w-6xl mx-auto px-4">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-6 gap-4">
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold mb-2">
                 <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                TÜRKİYE SAĞLIK & ECZANE PORTALI
+                İHTİYAÇ SIRASINA GÖRE SAĞLIK PORTALI
               </div>
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900">
-                Eczane & Sağlık Yardımcı Araçları
+                Türkiye Sağlık & İlaç Rehberi Portalı
               </h2>
               <p className="text-sm sm:text-base text-slate-600 mt-1 max-w-2xl">
-                SGK katkı payı hesaplama, anlık şehir polen ve hava kalitesi durumu, TİTCK ilaç
-                toplatma bültenleri ve Kızılay kan bağış rehberi.
+                En çok ihtiyaç duyulan sırayla: 7/24 acil hastaneler, güncel ilaç fiyatları ve
+                açıklamaları, SGK katkı payı hesaplama, acil ilk yardım ve ilaç etkileşim araçları.
               </p>
             </div>
 
@@ -879,20 +879,137 @@ export default function Home() {
               href="/saglik-araclari"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-sm shadow-md transition-all shrink-0 self-start md:self-auto"
             >
-              <span>Tüm Araçları Aç</span>
+              <span>Tüm Araçları Tek Ekranda Aç</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
 
+          {/* Mobil Tek Tıkla Tüm Araçlar ve Menüler Hızlı Izgarası */}
+          <div className="mb-6 p-3 rounded-2xl bg-slate-900 text-white shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-black uppercase tracking-wider text-emerald-400">
+                ⚡ Tek Tıkla Tüm Sağlık & İlaç Araçları (İhtiyaç Sırasıyla)
+              </span>
+              <span className="text-[10px] font-bold text-slate-300">Kaydırmasız Tam Liste</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <Link
+                href="/en-yakin-hastane"
+                className="p-2.5 rounded-xl bg-slate-800 hover:bg-red-600 text-white text-xs font-extrabold flex items-center gap-2 transition-colors border border-slate-700"
+              >
+                <span className="w-5 h-5 rounded-md bg-red-600 text-white text-[10px] font-black flex items-center justify-center shrink-0">
+                  1
+                </span>
+                <span className="truncate">Acil Hastane & ASM</span>
+              </Link>
+              <Link
+                href="/blog"
+                className="p-2.5 rounded-xl bg-slate-800 hover:bg-emerald-600 text-white text-xs font-extrabold flex items-center gap-2 transition-colors border border-slate-700"
+              >
+                <span className="w-5 h-5 rounded-md bg-emerald-600 text-white text-[10px] font-black flex items-center justify-center shrink-0">
+                  2
+                </span>
+                <span className="truncate">İlaç Fiyatları & Rehber</span>
+              </Link>
+              <Link
+                href="/sgk-katki-payi-hesaplayici"
+                className="p-2.5 rounded-xl bg-slate-800 hover:bg-emerald-600 text-white text-xs font-extrabold flex items-center gap-2 transition-colors border border-slate-700"
+              >
+                <span className="w-5 h-5 rounded-md bg-emerald-600 text-white text-[10px] font-black flex items-center justify-center shrink-0">
+                  3
+                </span>
+                <span className="truncate">SGK Katkı Payı</span>
+              </Link>
+              <Link
+                href="/ilk-yardim"
+                className="p-2.5 rounded-xl bg-slate-800 hover:bg-rose-600 text-white text-xs font-extrabold flex items-center gap-2 transition-colors border border-slate-700"
+              >
+                <span className="w-5 h-5 rounded-md bg-rose-600 text-white text-[10px] font-black flex items-center justify-center shrink-0">
+                  4
+                </span>
+                <span className="truncate">7/24 İlk Yardım</span>
+              </Link>
+              <Link
+                href="/ilac-etkilesim"
+                className="p-2.5 rounded-xl bg-slate-800 hover:bg-indigo-600 text-white text-xs font-extrabold flex items-center gap-2 transition-colors border border-slate-700"
+              >
+                <span className="w-5 h-5 rounded-md bg-indigo-600 text-white text-[10px] font-black flex items-center justify-center shrink-0">
+                  5
+                </span>
+                <span className="truncate">İlaç Etkileşimi</span>
+              </Link>
+              <Link
+                href="/kan-bagisi"
+                className="p-2.5 rounded-xl bg-slate-800 hover:bg-red-600 text-white text-xs font-extrabold flex items-center gap-2 transition-colors border border-slate-700"
+              >
+                <span className="w-5 h-5 rounded-md bg-red-600 text-white text-[10px] font-black flex items-center justify-center shrink-0">
+                  6
+                </span>
+                <span className="truncate">Kızılay Kan Rehberi</span>
+              </Link>
+              <Link
+                href="/titck-ilac-geri-cekme"
+                className="p-2.5 rounded-xl bg-slate-800 hover:bg-amber-600 text-white text-xs font-extrabold flex items-center gap-2 transition-colors border border-slate-700"
+              >
+                <span className="w-5 h-5 rounded-md bg-amber-600 text-white text-[10px] font-black flex items-center justify-center shrink-0">
+                  7
+                </span>
+                <span className="truncate">TİTCK İlaç Toplatma</span>
+              </Link>
+              <Link
+                href="/veri-kaynaklari"
+                className="p-2.5 rounded-xl bg-slate-800 hover:bg-cyan-600 text-white text-xs font-extrabold flex items-center gap-2 transition-colors border border-slate-700"
+              >
+                <span className="w-5 h-5 rounded-md bg-cyan-600 text-white text-[10px] font-black flex items-center justify-center shrink-0">
+                  8
+                </span>
+                <span className="truncate">Token & Kota Raporu</span>
+              </Link>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {/* Card 1: SGK Katkı Payı */}
+            {/* Öncelik 1: İlaç Fiyatları, Barkod & Açıklamalı İlaç Rehberi */}
+            <Link
+              href="/blog"
+              className="group p-6 rounded-2xl bg-white border-2 border-emerald-200 hover:border-emerald-600 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-100 group-hover:bg-emerald-600 text-emerald-700 group-hover:text-white flex items-center justify-center transition-all">
+                    <BookOpen className="w-6 h-6" />
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-black border border-emerald-200">
+                    1. En Çok Aranan
+                  </span>
+                </div>
+                <h3 className="text-base font-black text-slate-900 group-hover:text-emerald-700 transition-colors">
+                  İlaç Fiyatları, Barkod & Kullanım Rehberi
+                </h3>
+                <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                  110+ yaygın ilacın güncel eczane satış fiyatı (PSF), SGK katkı payı, ne işe
+                  yaradığı, aç/tok kullanım talimatı ve reçete türü açıklamaları.
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-700">
+                <span>İlaç Fiyatlarını & Açıklamaları Aç</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+
+            {/* Öncelik 2: SGK Katkı Payı */}
             <Link
               href="/sgk-katki-payi-hesaplayici"
               className="group p-6 rounded-2xl bg-white border border-slate-200 hover:border-emerald-500 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
             >
               <div>
-                <div className="w-12 h-12 rounded-xl bg-emerald-100 group-hover:bg-emerald-600 text-emerald-700 group-hover:text-white flex items-center justify-center transition-all mb-4">
-                  <Calculator className="w-6 h-6" />
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-100 group-hover:bg-emerald-600 text-emerald-700 group-hover:text-white flex items-center justify-center transition-all">
+                    <Calculator className="w-6 h-6" />
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-[11px] font-black">
+                    2. Öncelik
+                  </span>
                 </div>
                 <h3 className="text-base font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
                   SGK Katkı Payı & Eşdeğer Farkı
@@ -908,60 +1025,47 @@ export default function Home() {
               </div>
             </Link>
 
-            {/* Card 2: Polen & Hava Kalitesi */}
+            {/* Öncelik 3: 7/24 Acil İlk Yardım */}
             <Link
-              href="/hava-kalitesi-polen"
-              className="group p-6 rounded-2xl bg-white border border-slate-200 hover:border-cyan-500 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+              href="/ilk-yardim"
+              className="group p-6 rounded-2xl bg-white border border-slate-200 hover:border-rose-500 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
             >
               <div>
-                <div className="w-12 h-12 rounded-xl bg-cyan-100 group-hover:bg-cyan-600 text-cyan-700 group-hover:text-white flex items-center justify-center transition-all mb-4">
-                  <Wind className="w-6 h-6" />
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-rose-100 group-hover:bg-rose-600 text-rose-700 group-hover:text-white flex items-center justify-center transition-all">
+                    <HeartPulse className="w-6 h-6" />
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 text-[11px] font-black">
+                    3. Acil Müdahale
+                  </span>
                 </div>
-                <h3 className="text-base font-bold text-slate-900 group-hover:text-cyan-700 transition-colors">
-                  Polen & Hava Kalitesi İndeksi
+                <h3 className="text-base font-bold text-slate-900 group-hover:text-rose-700 transition-colors">
+                  7/24 Acil İlk Yardım Rehberi
                 </h3>
                 <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-                  81 il için anlık AQI hava kirliliği, ağaç/çim polen yoğunluğu, astım ve alerjik
-                  rinit hastaları için uzman klinik sağlık önerileri.
+                  Heimlich manevrası, yanık ilk müdahalesi, kalp krizi belirtileri ve 114 UZEM
+                  zehirlenme acil protokolleri.
                 </p>
               </div>
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-cyan-700">
-                <span>Canlı Risk Durumu</span>
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-rose-700">
+                <span>Acil Rehberi Aç</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </div>
             </Link>
 
-            {/* Card 3: TİTCK İlaç Geri Çekme */}
-            <Link
-              href="/titck-ilac-geri-cekme"
-              className="group p-6 rounded-2xl bg-white border border-slate-200 hover:border-amber-500 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
-            >
-              <div>
-                <div className="w-12 h-12 rounded-xl bg-amber-100 group-hover:bg-amber-600 text-amber-700 group-hover:text-white flex items-center justify-center transition-all mb-4">
-                  <ShieldAlert className="w-6 h-6" />
-                </div>
-                <h3 className="text-base font-bold text-slate-900 group-hover:text-amber-700 transition-colors">
-                  TİTCK İlaç Geri Çekme Bildirimleri
-                </h3>
-                <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-                  Sağlık Bakanlığı tarafından duyurulan 1. ve 2. sınıf toplatma kararları,
-                  etkilenen parti numaraları ve sahte ilaç uyarıları.
-                </p>
-              </div>
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-amber-700">
-                <span>Resmi Bülten Sorgula</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </div>
-            </Link>
-
-            {/* Card 4: İlaç & Besin Etkileşimi */}
+            {/* Öncelik 4: İlaç & Besin Etkileşimi */}
             <Link
               href="/ilac-etkilesim"
               className="group p-6 rounded-2xl bg-white border border-slate-200 hover:border-indigo-500 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
             >
               <div>
-                <div className="w-12 h-12 rounded-xl bg-indigo-100 group-hover:bg-indigo-600 text-indigo-700 group-hover:text-white flex items-center justify-center transition-all mb-4">
-                  <Pill className="w-6 h-6" />
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-indigo-100 group-hover:bg-indigo-600 text-indigo-700 group-hover:text-white flex items-center justify-center transition-all">
+                    <Pill className="w-6 h-6" />
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-[11px] font-black">
+                    4. Güvenli İlaç
+                  </span>
                 </div>
                 <h3 className="text-base font-bold text-slate-900 group-hover:text-indigo-700 transition-colors">
                   İlaç-Besin Etkileşim Kontrolü
@@ -977,14 +1081,19 @@ export default function Home() {
               </div>
             </Link>
 
-            {/* Card 5: Kızılay Kan Bağışı */}
+            {/* Öncelik 5: Kızılay Kan Bağışı */}
             <Link
               href="/kan-bagisi"
               className="group p-6 rounded-2xl bg-white border border-slate-200 hover:border-red-500 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
             >
               <div>
-                <div className="w-12 h-12 rounded-xl bg-red-100 group-hover:bg-red-600 text-red-700 group-hover:text-white flex items-center justify-center transition-all mb-4">
-                  <Droplets className="w-6 h-6" />
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-red-100 group-hover:bg-red-600 text-red-700 group-hover:text-white flex items-center justify-center transition-all">
+                    <Droplets className="w-6 h-6" />
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-[11px] font-black">
+                    5. Kan İhtiyacı
+                  </span>
                 </div>
                 <h3 className="text-base font-bold text-slate-900 group-hover:text-red-700 transition-colors">
                   Kızılay Kan Bağışı & Uyumluluk
@@ -1000,25 +1109,30 @@ export default function Home() {
               </div>
             </Link>
 
-            {/* Card 6: 7/24 Acil İlk Yardım */}
+            {/* Öncelik 6: TİTCK İlaç Geri Çekme & Hava/Polen */}
             <Link
-              href="/ilk-yardim"
-              className="group p-6 rounded-2xl bg-white border border-slate-200 hover:border-rose-500 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+              href="/titck-ilac-geri-cekme"
+              className="group p-6 rounded-2xl bg-white border border-slate-200 hover:border-amber-500 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
             >
               <div>
-                <div className="w-12 h-12 rounded-xl bg-rose-100 group-hover:bg-rose-600 text-rose-700 group-hover:text-white flex items-center justify-center transition-all mb-4">
-                  <HeartPulse className="w-6 h-6" />
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-amber-100 group-hover:bg-amber-600 text-amber-700 group-hover:text-white flex items-center justify-center transition-all">
+                    <ShieldAlert className="w-6 h-6" />
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-[11px] font-black">
+                    6. Resmi Duyuru
+                  </span>
                 </div>
-                <h3 className="text-base font-bold text-slate-900 group-hover:text-rose-700 transition-colors">
-                  7/24 Acil İlk Yardım Rehberi
+                <h3 className="text-base font-bold text-slate-900 group-hover:text-amber-700 transition-colors">
+                  TİTCK İlaç Geri Çekme & Polen Durumu
                 </h3>
                 <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-                  Heimlich manevrası, yanık ilk müdahalesi, kalp krizi belirtileri ve 114 UZEM
-                  zehirlenme acil protokolleri.
+                  Sağlık Bakanlığı tarafından duyurulan ilaç toplatma kararları, etkilenen parti
+                  numaraları ve 81 il hava kalitesi / polen indeksleri.
                 </p>
               </div>
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-rose-700">
-                <span>Acil Rehberi Aç</span>
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-amber-700">
+                <span>Resmi Bülten Sorgula</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </div>
             </Link>
