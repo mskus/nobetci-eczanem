@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "Nöbetçi Eczanem AI Catalog",
+  "version": "1.0.0",
+  "description": "Türkiye genelinde 81 ilde canlı nöbetçi eczaneler, en yakın acil hastaneler, ilaç fiyatları ve sağlık araçları veri kataloğu.",
+  "provider": {
+    "name": "Nöbetçi Eczanem",
+    "url": "https://nobetci-eczanem.com"
+  },
+  "capabilities": [
+    {
+      "id": "on-duty-pharmacies",
+      "name": "Nöbetçi Eczane Sorgulama",
+      "description": "81 il ve 973 ilçede şu anda açık olan nöbetçi eczaneleri canlı harita ve adresle listeler.",
+      "url": "https://nobetci-eczanem.com/",
+      "parameters": {
+        "city": "string",
+        "district": "string",
+        "latitude": "number",
+        "longitude": "number"
+      }
+    },
+    {
+      "id": "emergency-hospitals",
+      "name": "En Yakın Acil Hastane ve ASM",
+      "description": "Devlet, şehir hastaneleri ve aile sağlığı merkezlerini mesafeye göre sıralar.",
+      "url": "https://nobetci-eczanem.com/#/en-yakin-hastane"
+    },
+    {
+      "id": "medicine-database",
+      "name": "İlaç Fiyatları ve Kullanım Rehberi",
+      "description": "110+ temel ilacın PSF fiyatı, SGK katkı payı ve kullanım açıklamalarını sunar.",
+      "url": "https://nobetci-eczanem.com/#/blog"
+    },
+    {
+      "id": "sgk-copay-calculator",
+      "name": "SGK Katkı Payı Hesaplayıcı",
+      "description": "Çalışan ve emekli ilaç katkı payı ve muayene ücretini hesaplar.",
+      "url": "https://nobetci-eczanem.com/#/sgk-katki-payi-hesaplayici"
+    }
+  ]
+}

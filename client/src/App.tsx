@@ -4,6 +4,7 @@ import { Route, Switch, Router as WouterRouter } from "wouter";
 import { useHashLocation } from "wouter/use-hash-location";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { LanguageProvider } from "./lib/i18n";
 import SiteLayout from "./components/SiteLayout";
 import Home from "./pages/Home";
 import DataSources from "./pages/DataSources";
@@ -14,6 +15,8 @@ import NearestHospitals from "./pages/NearestHospitals";
 import TurkeyHealthStats from "./pages/TurkeyHealthStats";
 import HealthPortalTools from "./pages/HealthPortalTools";
 import EarthquakeTracker from "./pages/EarthquakeTracker";
+import Contact from "./pages/Contact";
+import AdminPanel from "./pages/AdminPanel";
 import NotFound from "./pages/NotFound";
 
 function Router() {
@@ -37,7 +40,9 @@ function Router() {
           <Route path="/blog" component={Blog} />
           <Route path="/veri-kaynaklari" component={DataSources} />
           <Route path="/reklam-ver" component={Advertise} />
-          <Route path="/iletisim" component={Advertise} />
+          <Route path="/iletisim" component={Contact} />
+          <Route path="/yonetim-kapisi-2026" component={AdminPanel} />
+          <Route path="/admin" component={AdminPanel} />
           <Route path="/404" component={NotFound} />
           <Route component={NotFound} />
         </Switch>
@@ -49,12 +54,15 @@ function Router() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="light">
-        <TooltipProvider>
-          <Toaster position="top-center" />
-          <Router />
-        </TooltipProvider>
-      </ThemeProvider>
+      <LanguageProvider>
+        <ThemeProvider defaultTheme="light">
+          <TooltipProvider>
+            <Toaster position="top-center" />
+            <Router />
+          </TooltipProvider>
+        </ThemeProvider>
+      </LanguageProvider>
     </ErrorBoundary>
   );
 }
+

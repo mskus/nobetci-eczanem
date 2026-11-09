@@ -1,0 +1,17 @@
+# Nöbetçi Eczanem — Türkiye 81 İl Canlı Nöbetçi Eczane, 7/24 Acil Hastane ve İlaç Rehberi (TR / EN / AR / RU / DE)
+
+> Türkiye genelinde 81 il ve 973 ilçede anlık açık olan nöbetçi eczaneleri, 7/24 acil hastaneleri, Aile Sağlığı Merkezlerini (ASM), güncel TİTCK ilaç fiyatlarını ve SGK katkı payı hesaplama araçlarını Türkçe, İngilizce, Arapça, Rusça ve Almanca sunan sağlık portalı.
+
+## Desteklenen Diller / Supported Languages
+- [Türkçe Ana Sayfa](https://nobetcieczane.life/?lang=tr): 81 il ve 973 ilçede canlı nöbetçi eczaneler ve en yakın hastaneler.
+- [English — Pharmacy on Duty Turkey](https://nobetcieczane.life/?lang=en): 24/7 open on-duty pharmacies (Nöbetçi Eczane), nearest emergency hospitals, and medicine prices across all 81 provinces of Turkey.
+- [Deutsch — Notdienst Apotheke Türkei](https://nobetcieczane.life/?lang=de): 24h Notdienst-Apotheken (Nöbetçi Eczane), Notaufnahmen und Medikamentenpreise in allen 81 Provinzen der Türkei.
+- [العربية — صيدلية مناوبة في تركيا](https://nobetcieczane.life/?lang=ar): أقرب صيدلية مناوبة مفتوحة الآن على مدار 24 ساعة ومستشفيات الطوارئ وأسعار الأدوية في جميع ولايات تركيا الـ 81.
+- [Русский — Дежурные аптеки Турции 24/7](https://nobetcieczane.life/?lang=ru): Круглосуточные дежурные аптеки (Nöbetçi Eczane), ближайшие больницы скорой помощи и цены на лекарства во всех 81 провинциях Турции.
+
+## Temel Sağlık Servisleri
+- [Nöbetçi Eczaneler (81 İl Canlı Harita)](https://nobetcieczane.life/): GPS konumuna göre en yakın açık nöbetçi eczane, adres tarifi, telefon ve Google Haritalar yol tarifi.
+- [En Yakın 7/24 Acil Hastane ve ASM](https://nobetcieczane.life/#/en-yakin-hastane): Devlet hastaneleri, şehir hastaneleri, eğitim araştırma hastaneleri ve sağlık ocakları.
+- [2026 Güncel İlaç Fiyatları ve Rehberi](https://nobetcieczane.life/#/blog): TİTCK perakende ilaç fiyatları, reçete türleri, etken maddeler ve kullanım açıklamaları.
+- [SGK İlaç Katkı Payı Hesaplayıcı](https://nobetcieczane.life/#/sgk-katki-payi-hesaplayici): Çalışan (%20) ve emekli (%10) reçete katılım payı ve muayene ücreti hesaplama.
+- [Acil İlk Yardım ve İlaç Etkileşim Araçları](https://nobetcieczane.life/#/saglik-araclari): 7/24 ilk yardım rehberi, ilaç-ilaç etkileşim kontrolü, Kızılay kan bağışı noktaları ve TİTCK ilaç geri çekme duyuruları.

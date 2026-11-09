@@ -18,6 +18,16 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "react-vendor": ["react", "react-dom", "wouter"],
+          "leaflet-vendor": ["leaflet"],
+          "chart-vendor": ["recharts"],
+          "icons-vendor": ["lucide-react"],
+        },
+      },
+    },
   },
   server: {
     port: 3000,

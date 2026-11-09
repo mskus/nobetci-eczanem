@@ -16,6 +16,19 @@ import {
 } from "./services/rapidApi.js";
 import { getQuotaSummary } from "./services/quotaService.js";
 import { TURKEY_DISTRICTS, toTurkishSlug } from "../shared/turkeyDistricts.js";
+import {
+  getAdminAuth,
+  updateAdminPassword,
+  recordAdminLogin,
+  getAdSenseConfig,
+  saveAdSenseConfig,
+  getContactMessages,
+  addContactMessage,
+  markContactMessageRead,
+  deleteContactMessage,
+  recordSessionEvent,
+  getAnalyticsReport,
+} from "./services/adminService.js";
 
 const __filename: string = (() => {
   try {
@@ -38,6 +51,25 @@ async function startServer() {
     res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
+  // AI Discoverability: llms.txt & ai-catalog.json
+  app.get("/llms.txt", (_req, res) => {
+    const filePath = path.resolve(process.cwd(), "client", "public", "llms.txt");
+    if (fs.existsSync(filePath)) {
+      res.type("text/plain; charset=utf-8").sendFile(filePath);
+    } else {
+      res.type("text/plain; charset=utf-8").send("# Nöbetçi Eczanem\n> Türkiye geneli 81 il nöbetçi eczaneler.");
+    }
+  });
+
+  app.get(["/ai-catalog.json", "/.well-known/ai-catalog.json"], (_req, res) => {
+    const filePath = path.resolve(process.cwd(), "client", "public", "ai-catalog.json");
+    if (fs.existsSync(filePath)) {
+      res.type("application/json; charset=utf-8").sendFile(filePath);
+    } else {
+      res.type("application/json; charset=utf-8").json({ name: "Nöbetçi Eczanem", version: "1.0.0" });
+    }
+  });
+
   // SEO: robots.txt
   app.get("/robots.txt", (req, res) => {
     const host = req.headers.host || "nobetci-eczanem.com";
@@ -47,6 +79,7 @@ async function startServer() {
         "User-agent: *",
         "Allow: /",
         "Disallow: /api/",
+        "Disallow: /yonetim-kapisi-2026",
         `Sitemap: ${protocol}://${host}/sitemap.xml`,
       ].join("\n")
     );
@@ -574,6 +607,154 @@ ${urlsXml}
       res
         .status(err.status || 500)
         .json({ success: false, error: err.message || "RapidAPI lokasyon sorgusu başarısız" });
+    }
+  });
+
+  // --- Admin, İletişim, AdSense & Kullanıcı İstatistikleri Endpoints ---
+
+  // 13. Admin Auth Login
+  app.post("/api/admin/auth/login", (req, res) => {
+    const { password } = req.body || {};
+    const auth = getAdminAuth();
+    if (password && password === auth.passwordHash) {
+      recordAdminLogin();
+      return res.json({
+        success: true,
+        token: "admin_token_" + Date.now(),
+        secretRoute: auth.secretRoute,
+      });
+    }
+    return res.status(401).json({ success: false, error: "Hatalı şifre" });
+  });
+
+  // 14. Admin Auth Change Password
+  app.post("/api/admin/auth/change-password", (req, res) => {
+    const { currentPassword, newPassword } = req.body || {};
+    const auth = getAdminAuth();
+    if (currentPassword !== auth.passwordHash) {
+      return res.status(401).json({ success: false, error: "Mevcut şifre hatalı" });
+    }
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ success: false, error: "Yeni şifre en az 6 karakter olmalıdır" });
+    }
+    updateAdminPassword(newPassword);
+    res.json({ success: true, message: "Şifre başarıyla güncellendi" });
+  });
+
+  // 15. Analytics: Track Visitor Session & Duration
+  app.post("/api/analytics/track", (req, res) => {
+    try {
+      const ip = (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || "";
+      const { sessionId, page, city, district, deviceType, browser, os, durationSeconds } = req.body || {};
+      if (sessionId) {
+        recordSessionEvent({
+          sessionId,
+          page: page || "/",
+          city,
+          district,
+          deviceType: deviceType || "mobile",
+          browser,
+          os,
+          durationSeconds: Number(durationSeconds) || 0,
+          timestamp: new Date().toISOString(),
+          ip: ip.split(",")[0].trim(),
+        });
+      }
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // 16. Analytics: Get Admin Report
+  app.get("/api/admin/analytics", (_req, res) => {
+    try {
+      const report = getAnalyticsReport();
+      res.json({ success: true, data: report });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // 17. Contact Form: Submit message
+  app.post("/api/contact/messages", (req, res) => {
+    try {
+      const { name, email, phone, subject, message } = req.body || {};
+      if (!name || !email || !message) {
+        return res.status(400).json({ success: false, error: "Ad, e-posta ve mesaj zorunludur" });
+      }
+      const ip = (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || "";
+      const saved = addContactMessage({
+        name,
+        email,
+        phone,
+        subject,
+        message,
+        ip: ip.split(",")[0].trim(),
+      });
+      res.json({ success: true, data: saved });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // 18. Contact Form: Get all messages (for Admin)
+  app.get("/api/contact/messages", (_req, res) => {
+    try {
+      const messages = getContactMessages();
+      res.json({ success: true, data: messages });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // 19. Contact Form: Mark message as read
+  app.patch("/api/contact/messages/:id/read", (req, res) => {
+    try {
+      const ok = markContactMessageRead(req.params.id, true);
+      res.json({ success: ok });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // 20. Contact Form: Delete message
+  app.delete("/api/contact/messages/:id", (req, res) => {
+    try {
+      const ok = deleteContactMessage(req.params.id);
+      res.json({ success: ok });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // 21. AdSense & Ads: Public config for frontend
+  app.get("/api/adsense/public", (_req, res) => {
+    try {
+      const cfg = getAdSenseConfig();
+      res.json({
+        success: true,
+        data: {
+          adsenseEnabled: cfg.adsenseEnabled,
+          publisherId: cfg.publisherId,
+          autoAdsEnabled: cfg.autoAdsEnabled,
+          headerScripts: cfg.headerScripts,
+          bodyScripts: cfg.bodyScripts,
+          slots: cfg.slots,
+        },
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // 22. AdSense & Ads: Admin update config
+  app.post("/api/admin/adsense", (req, res) => {
+    try {
+      const updated = saveAdSenseConfig(req.body || {});
+      res.json({ success: true, data: updated });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
     }
   });
 

@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /yonetim-kapisi-2026
+Disallow: /admin
+Disallow: /api/
+
+Sitemap: https://nobetcieczane.life/sitemap.xml

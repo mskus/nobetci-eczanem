@@ -26,10 +26,15 @@ import {
   Compass,
   Building2,
   BookOpen,
+  ThumbsUp,
+  Search,
+  HelpCircle,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { AdRail, MobileAd, SectionHeading } from "@/components/SiteLayout";
+import { AdRail, MobileAd, ProminentLanguageBar, SectionHeading } from "@/components/SiteLayout";
 import { RealLeafletMap } from "@/components/RealLeafletMap";
+import { SUPPORTED_LANGUAGES, updateMultilingualSEOMeta, useLanguage } from "@/lib/i18n";
 import {
   formatDistance,
   calculateDistanceKm,
@@ -42,6 +47,7 @@ import {
   setCachedUserLocation,
   requestGlobalLocation,
 } from "@/lib/globalLocation";
+import { updateTrackedLocation } from "@/lib/analyticsTracker";
 import {
   getLocalCities,
   getLocalDistricts,
@@ -51,19 +57,6 @@ import {
   type RawPharmacy,
   type DayDutyGroup,
 } from "@/lib/pharmacyService";
-
-const QUICK_MOBILE_CITIES = [
-  "İstanbul",
-  "Ankara",
-  "İzmir",
-  "Bursa",
-  "Antalya",
-  "Adana",
-  "Konya",
-  "Gaziantep",
-  "Kocaeli",
-  "Mersin",
-];
 
 function formatCleanPhone(phoneStr?: string | null): string {
   if (!phoneStr) return "Telefon Et";
@@ -120,11 +113,9 @@ function FormattedAddress({
     cleanAddress = `${district && district !== "Tümü" ? district + " Mah. " : ""}Atatürk Cad. No: 18/A`;
   }
 
-  const cityLower = (city || "").toLocaleLowerCase("tr-TR");
-  let detailedFullAddress = cleanAddress;
-  if (cityLower && !detailedFullAddress.toLocaleLowerCase("tr-TR").includes(cityLower)) {
-    detailedFullAddress += `, ${district && district !== "Tümü" ? district + " / " : ""}${city}`;
-  }
+  const { t } = useLanguage();
+  // Sadece temiz cadde, sokak ve kapı no adresi (sonundaki tekrarlayan şehir ilçe kaldırıldı)
+  const detailedFullAddress = cleanAddress;
 
   return (
     <div className="space-y-2 text-left">
@@ -141,7 +132,7 @@ function FormattedAddress({
         <div className="pl-5 pt-0.5">
           <div className="flex items-start gap-1.5 p-1.5 px-2.5 rounded-lg bg-amber-50/95 border border-amber-300/90 text-amber-950 shadow-2xs">
             <span className="text-[10px] font-black uppercase text-amber-800 bg-amber-200/90 px-1.5 py-0.2 rounded shrink-0">
-              TARİF
+              {t.addressDirectionTag}
             </span>
             <p className="text-[11px] font-extrabold leading-tight flex-1 text-amber-950 break-words">
               {landmarkText}
@@ -253,6 +244,7 @@ function PharmacyCard({
   onSelect: () => void;
   userLocation?: { latitude: number; longitude: number } | null;
 }) {
+  const { t } = useLanguage();
   const isAddressRejected =
     !pharmacy.address ||
     pharmacy.dataQuality?.status === "rejected" ||
@@ -325,8 +317,7 @@ function PharmacyCard({
                 {pharmacy.name}
               </h3>
               <p className="text-xs font-semibold text-gray-500 mt-0.5">
-                {pharmacy.district?.name ? `${pharmacy.district.name} · ` : ""}
-                {pharmacy.city?.name || ""}
+                {pharmacy.district?.name || pharmacy.city?.name || ""}
               </p>
             </div>
           </div>
@@ -373,10 +364,10 @@ function PharmacyCard({
           className="flex-1 min-h-11 button button-secondary flex items-center justify-center gap-1 font-extrabold text-[11px] sm:text-xs py-2 px-1.5 rounded-xl overflow-hidden min-w-0"
           href={`tel:${cleanPhone}`}
           onClick={(event) => event.stopPropagation()}
-          title={pharmacy.phone || "Telefon Et"}
+          title={pharmacy.phone || t.callBtn}
         >
           <Phone size={13} className="shrink-0 text-red-600" />
-          <span className="truncate">{displayPhone || "Ara"}</span>
+          <span className="truncate">{displayPhone || t.callBtn}</span>
         </a>
         <a
           className="flex-1 min-h-11 button button-primary flex items-center justify-center gap-1 font-extrabold text-xs py-2 px-2 rounded-xl whitespace-nowrap"
@@ -385,14 +376,14 @@ function PharmacyCard({
           rel="noreferrer"
           onClick={(event) => event.stopPropagation()}
         >
-          <Navigation size={13} className="shrink-0" /> Yol Tarifi
+          <Navigation size={13} className="shrink-0" /> {t.directionsBtn}
         </a>
         <button
           type="button"
           onClick={handleShare}
           className="min-h-11 w-11 shrink-0 rounded-xl border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 flex items-center justify-center cursor-pointer"
-          title="Eczane Konumunu Paylaş / Kopyala"
-          aria-label="Paylaş"
+          title={t.shareBtn}
+          aria-label={t.shareBtn}
         >
           <Share2 size={15} />
         </button>
@@ -401,7 +392,240 @@ function PharmacyCard({
   );
 }
 
+function InteractiveFAQSection() {
+  const { lang, t } = useLanguage();
+  const [activeCategory, setActiveCategory] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [helpfulVotes, setHelpfulVotes] = useState<Record<number, boolean>>({});
+
+  // Dynamic Schema.org JSON-LD FAQPage structured data injection for Google, Yandex, Bing search engines
+  useEffect(() => {
+    if (!t.faqs || t.faqs.length === 0) return;
+
+    const faqSchema = {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": t.faqs.map((faq) => ({
+        "@type": "Question",
+        "name": faq.question,
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": faq.answer,
+        },
+      })),
+    };
+
+    let scriptTag = document.getElementById("faq-jsonld-schema") as HTMLScriptElement | null;
+    if (!scriptTag) {
+      scriptTag = document.createElement("script");
+      scriptTag.id = "faq-jsonld-schema";
+      scriptTag.type = "application/ld+json";
+      document.head.appendChild(scriptTag);
+    }
+    scriptTag.textContent = JSON.stringify(faqSchema);
+
+    return () => {
+      const tag = document.getElementById("faq-jsonld-schema");
+      if (tag) tag.remove();
+    };
+  }, [lang, t.faqs]);
+
+  // Extract unique categories dynamically
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    t.faqs.forEach((item) => {
+      if (item.category) set.add(item.category);
+    });
+    return Array.from(set);
+  }, [t.faqs]);
+
+  const filteredFaqs = useMemo(() => {
+    return t.faqs.filter((item) => {
+      const matchesCat = activeCategory === "all" || item.category === activeCategory;
+      const matchesSearch =
+        searchQuery.trim() === "" ||
+        item.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.answer.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.category && item.category.toLowerCase().includes(searchQuery.toLowerCase()));
+      return matchesCat && matchesSearch;
+    });
+  }, [t.faqs, activeCategory, searchQuery]);
+
+  const toggleHelpful = (idx: number) => {
+    setHelpfulVotes((prev) => {
+      const isCurrentlyHelpful = !prev[idx];
+      if (isCurrentlyHelpful) {
+        toast.success(
+          lang === "tr"
+            ? "Geri bildiriminiz için teşekkür ederiz!"
+            : lang === "de"
+            ? "Vielen Dank für Ihr Feedback!"
+            : lang === "ar"
+            ? "شكراً لك على تقييمك!"
+            : lang === "ru"
+            ? "Спасибо за ваш отзыв!"
+            : "Thank you for your feedback!"
+        );
+      }
+      return { ...prev, [idx]: isCurrentlyHelpful };
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="text-left space-y-2">
+        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-50 text-red-700 font-extrabold text-xs border border-red-200">
+          <HelpCircle size={14} className="text-red-600 shrink-0" />
+          <span>SCHEMA.ORG JSON-LD FAQPAGE</span>
+        </div>
+        <h2 className="text-2xl sm:text-3xl font-black text-gray-900 leading-tight">
+          {t.faqHeading}
+        </h2>
+        <p className="text-sm sm:text-base text-gray-600 max-w-3xl leading-relaxed">
+          {t.faqSubheading}
+        </p>
+      </div>
+
+      {/* Filter and Search Bar */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-gray-50 p-3 sm:p-4 rounded-2xl border border-gray-200">
+        {/* Category Tabs */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none min-w-0 flex-1">
+          <button
+            type="button"
+            onClick={() => setActiveCategory("all")}
+            className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all shrink-0 cursor-pointer ${
+              activeCategory === "all"
+                ? "bg-red-600 text-white shadow-xs"
+                : "bg-white text-gray-700 hover:bg-gray-200 border border-gray-200"
+            }`}
+          >
+            {lang === "tr"
+              ? "Tümü"
+              : lang === "de"
+              ? "Alle"
+              : lang === "ar"
+              ? "الكل"
+              : lang === "ru"
+              ? "Все"
+              : "All"}{" "}
+            ({t.faqs.length})
+          </button>
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setActiveCategory(cat)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all shrink-0 cursor-pointer ${
+                activeCategory === cat
+                  ? "bg-red-600 text-white shadow-xs"
+                  : "bg-white text-gray-700 hover:bg-gray-200 border border-gray-200"
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+
+        {/* Search Input */}
+        <div className="relative w-full sm:w-64 shrink-0">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={
+              lang === "tr"
+                ? "Soru veya konu ara..."
+                : lang === "de"
+                ? "Frage suchen..."
+                : lang === "ar"
+                ? "بحث عن سؤال..."
+                : lang === "ru"
+                ? "Поиск вопроса..."
+                : "Search questions..."
+            }
+            className="w-full pl-9 pr-3 py-2 bg-white text-xs font-bold text-gray-900 border border-gray-300 rounded-xl focus:border-red-600 focus:ring-1 focus:ring-red-200 outline-none"
+          />
+        </div>
+      </div>
+
+      {/* Responsive Grid Layout of FAQ Items */}
+      {filteredFaqs.length === 0 ? (
+        <div className="p-8 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-300">
+          <HelpCircle size={32} className="mx-auto text-gray-400 mb-2" />
+          <p className="text-sm font-bold text-gray-600">
+            {lang === "tr" ? "Aradığınız kriterlere uygun soru bulunamadı." : "No matching questions found."}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 items-stretch">
+          {filteredFaqs.map((faq, idx) => {
+            const isHelpful = !!helpfulVotes[idx];
+            return (
+              <article
+                key={faq.question + idx}
+                className="h-full flex flex-col justify-between p-5 rounded-2xl bg-slate-50/80 border border-slate-200 hover:border-red-300 hover:bg-white hover:shadow-md transition-all text-left"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-2.5">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-red-700 bg-red-100/80 px-2 py-0.5 rounded-md border border-red-200">
+                      {faq.category || "SSS"}
+                    </span>
+                    <span className="text-[11px] font-extrabold text-gray-400">#{idx + 1}</span>
+                  </div>
+
+                  <h3 className="text-base font-extrabold text-gray-900 leading-snug mb-2 flex items-start gap-2">
+                    <CheckCircle2 size={18} className="text-red-600 shrink-0 mt-0.5" />
+                    <span>{faq.question}</span>
+                  </h3>
+
+                  <p className="text-xs sm:text-sm text-gray-600 leading-relaxed pt-1 pl-6">
+                    {faq.answer}
+                  </p>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-slate-200/80 flex items-center justify-between text-xs">
+                  <span className="text-[11px] font-semibold text-slate-500">
+                    {lang === "tr"
+                      ? "Doğrulanmış Resmi Bilgi"
+                      : lang === "de"
+                      ? "Verifizierte Information"
+                      : "Verified Official Info"}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => toggleHelpful(idx)}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      isHelpful
+                        ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                        : "bg-white hover:bg-slate-100 text-slate-700 border border-slate-200"
+                    }`}
+                  >
+                    <ThumbsUp size={13} className={isHelpful ? "fill-emerald-700 text-emerald-700" : ""} />
+                    <span>
+                      {isHelpful
+                        ? lang === "tr"
+                          ? "Faydalı Bulundu"
+                          : "Helpful"
+                        : lang === "tr"
+                        ? "Faydalı mı?"
+                        : "Helpful?"}
+                    </span>
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Home() {
+  const { lang, setLang, t } = useLanguage();
   const cachedLoc = getCachedUserLocation();
   const initialArea = useMemo(() => {
     if (cachedLoc) {
@@ -426,11 +650,11 @@ export default function Home() {
     cachedLoc
   );
 
-  // Dynamic SEO Title & Meta Description based on active city/district
+  // Dynamic Multilingual SEO Title & Meta Description based on active language and city/district
   useEffect(() => {
     const areaText = district && district !== "Tümü" ? `${district}, ${city}` : city;
-    document.title = `${areaText} Nöbetçi Eczaneler (Bugün Açık) · En Yakın Eczane Bul | Nöbetçi Eczanem`;
-  }, [city, district]);
+    updateMultilingualSEOMeta(lang, areaText);
+  }, [city, district, lang]);
 
   const handleCityChange = (newCity: string) => {
     setCity(newCity);
@@ -482,33 +706,27 @@ export default function Home() {
     }
   };
 
-  // GPS Nearby with automatic city/district state sync
-  const findNearby = () => {
-    if (!navigator.geolocation) {
-      fetchPharmacies(city, district, userLocation);
-      return;
-    }
-
+  // Stabilize GPS Nearby with automatic city/district state sync
+  const findNearby = async () => {
     setLoading(true);
-
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude, longitude } = pos.coords;
-        const loc = { latitude, longitude };
+    try {
+      const loc = await requestGlobalLocation(true);
+      if (loc) {
         setUserLocation(loc);
         setCachedUserLocation(loc);
 
         const { city: detectedCity, district: detectedDistrict } = findNearestCityAndDistrict(
-          latitude,
-          longitude
+          loc.latitude,
+          loc.longitude
         );
         setCity(detectedCity);
         const newDists = getLocalDistricts(detectedCity);
         setDistrictList(newDists);
         setDistrict(detectedDistrict);
+        updateTrackedLocation(detectedCity, detectedDistrict);
 
         try {
-          const result = await fetchNearbyPharmaciesAuto(latitude, longitude);
+          const result = await fetchNearbyPharmaciesAuto(loc.latitude, loc.longitude);
           if (result.success && result.days.length > 0) {
             setDaysData(result.days);
             const todayIdx = result.days.findIndex((d) => d.day === "Bugün");
@@ -519,15 +737,15 @@ export default function Home() {
           }
         } catch {
           await fetchPharmacies(detectedCity, detectedDistrict, loc);
-        } finally {
-          setLoading(false);
         }
-      },
-      () => {
-        fetchPharmacies(city, district, userLocation);
-      },
-      { enableHighAccuracy: true, timeout: 8000 }
-    );
+      } else {
+        await fetchPharmacies(city, district, userLocation);
+      }
+    } catch {
+      await fetchPharmacies(city, district, userLocation);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Initial fetch & Auto GPS on mount
@@ -558,50 +776,37 @@ export default function Home() {
   const activeDayGroup = daysData[selectedDayIndex] || daysData[0];
   const activePharmacies = activeDayGroup?.pharmacies || [];
 
+  const translateDayLabel = (rawDay?: string) => {
+    if (!rawDay) return "";
+    if (rawDay === "Dün") return t.dayYesterday;
+    if (rawDay === "Bugün") return t.dayToday;
+    if (rawDay === "Yarın") return t.dayTomorrow;
+    return rawDay;
+  };
+
   return (
     <main>
-      <section className="hero-section py-2 sm:py-5">
+      <section className="hero-section py-1.5 sm:py-3">
         <AdRail side="left" />
-        <div className="hero-content container">
-          <h1 className="text-lg sm:text-3xl font-black mb-1.5 sm:mb-3">
-            En Yakın <span>Nöbetçi Eczaneyi</span> Bul
+        <div className="hero-content container px-2 sm:px-4">
+          <h1 className="text-base sm:text-2xl font-black mb-1 text-center leading-tight">
+            {t.heroTitlePrefix} <span>{t.heroTitleHighlight}</span> {t.heroTitleSuffix}
           </h1>
 
-          <div className="search-panel max-w-2xl mx-auto bg-white p-2.5 sm:p-5 rounded-2xl shadow-xl border border-red-100">
-            {/* Mobil Tek Dokunuş Hızlı Şehir Seçim Çubuğu */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-2 mb-1">
-              <button
-                type="button"
-                onClick={findNearby}
-                className="shrink-0 h-8 px-2.5 rounded-lg bg-red-50 text-red-700 border border-red-200 font-black text-[11px] flex items-center gap-1 cursor-pointer active:scale-95"
-              >
-                <Compass size={13} className="text-red-600" />
-                <span>Konumum</span>
-              </button>
-              {QUICK_MOBILE_CITIES.map((cName) => {
-                const isCurrent = city === cName;
-                return (
-                  <button
-                    key={cName}
-                    type="button"
-                    onClick={() => handleCityChange(cName)}
-                    className={`shrink-0 h-8 px-2.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
-                      isCurrent
-                        ? "bg-slate-900 text-white shadow-2xs"
-                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                    }`}
-                  >
-                    {cName}
-                  </button>
-                );
-              })}
-            </div>
+          {/* Sloganın Altında Yalnızca Bayraklardan Oluşan Dil Seçim Buton Grubu */}
+          <div className="mb-2.5 flex justify-center">
+            <ProminentLanguageBar />
+          </div>
 
-            {/* Otomatik Canlı Harita - Tam Boyutlu, Kesintisiz ve Büyütülebilir */}
+          <div className="search-panel max-w-2xl mx-auto bg-white p-2 sm:p-4 rounded-2xl shadow-xl border border-red-100 w-full">
+            {/* Otomatik Canlı Harita - Kesin Yükseklik ile Bozulmayan ve Tek Ekrana Sığan Yapı */}
             <div
-              className={`w-full mb-2.5 sm:mb-3.5 rounded-xl sm:rounded-2xl overflow-hidden border border-gray-200 shadow-xs bg-slate-100 relative z-0 transition-all duration-300 ${
-                mapExpanded ? "h-80 sm:h-[420px]" : "h-40 sm:h-68"
-              }`}
+              className="w-full mb-2 rounded-xl sm:rounded-2xl overflow-hidden border border-gray-200 shadow-xs bg-slate-100 relative z-0 transition-all duration-300"
+              style={{
+                height: mapExpanded
+                  ? "clamp(340px, 56dvh, 480px)"
+                  : "clamp(195px, calc(100dvh - 385px), 340px)",
+              }}
             >
               <RealLeafletMap
                 pharmacies={activePharmacies}
@@ -620,24 +825,24 @@ export default function Home() {
                 className="absolute bottom-2 right-2 z-[400] bg-white/95 hover:bg-white text-slate-900 font-extrabold text-[11px] px-2.5 py-1 rounded-lg border border-slate-300 shadow-sm flex items-center gap-1 cursor-pointer"
               >
                 {mapExpanded ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
-                <span>{mapExpanded ? "Küçült" : "Haritayı Büyüt"}</span>
+                <span>{mapExpanded ? t.mapCollapse : t.mapExpand}</span>
               </button>
             </div>
 
             {/* Yaşlılar ve Mobil Kullanıcılar İçin Çok Kolay İl / İlçe Seçimi + Tek Buton */}
-            <div className="bg-slate-50/90 p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border-2 border-slate-200">
-              <div className="grid grid-cols-2 gap-2 sm:gap-3.5">
+            <div className="bg-slate-50/90 p-2 sm:p-3.5 rounded-xl sm:rounded-2xl border-2 border-slate-200">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 {/* 1. Şehir / İl Seçimi */}
                 <div>
-                  <label className="block text-xs sm:text-sm font-extrabold text-slate-900 mb-1">
-                    1. Şehir (İl) Seçin:
+                  <label className="block text-[11px] sm:text-xs font-extrabold text-slate-900 mb-0.5 truncate">
+                    {t.selectCityLabel}
                   </label>
                   <select
                     value={city}
                     onChange={(e) => handleCityChange(e.target.value)}
-                    aria-label="İl seçin"
+                    aria-label={t.selectCityLabel}
                     disabled={loading}
-                    className="w-full h-11 sm:h-12 px-2.5 sm:px-3.5 py-1.5 text-sm sm:text-base font-bold text-slate-900 bg-white border-2 border-slate-300 rounded-xl focus:border-red-600 focus:ring-2 focus:ring-red-200 outline-none transition-all cursor-pointer"
+                    className="w-full h-10 sm:h-11 px-2 sm:px-3 py-1 text-xs sm:text-sm font-bold text-slate-900 bg-white border-2 border-slate-300 rounded-xl focus:border-red-600 focus:ring-2 focus:ring-red-200 outline-none transition-all cursor-pointer"
                   >
                     {cityList.length > 0 ? (
                       cityList.map((item) => (
@@ -653,17 +858,19 @@ export default function Home() {
 
                 {/* 2. İlçe Seçimi */}
                 <div>
-                  <label className="block text-xs sm:text-sm font-extrabold text-slate-900 mb-1">
-                    2. İlçe Seçin:
+                  <label className="block text-[11px] sm:text-xs font-extrabold text-slate-900 mb-0.5 truncate">
+                    {t.selectDistrictLabel}
                   </label>
                   <select
                     value={district}
                     onChange={(e) => handleDistrictChange(e.target.value)}
-                    aria-label="İlçe seçin"
+                    aria-label={t.selectDistrictLabel}
                     disabled={loading}
-                    className="w-full h-11 sm:h-12 px-2.5 sm:px-3.5 py-1.5 text-sm sm:text-base font-bold text-slate-900 bg-white border-2 border-slate-300 rounded-xl focus:border-red-600 focus:ring-2 focus:ring-red-200 outline-none transition-all cursor-pointer"
+                    className="w-full h-10 sm:h-11 px-2 sm:px-3 py-1 text-xs sm:text-sm font-bold text-slate-900 bg-white border-2 border-slate-300 rounded-xl focus:border-red-600 focus:ring-2 focus:ring-red-200 outline-none transition-all cursor-pointer"
                   >
-                    <option value="Tümü">Tüm İlçeler ({districtList.length})</option>
+                    <option value="Tümü">
+                      {t.allDistrictsOption} ({districtList.length})
+                    </option>
                     {districtList.map((dist) => (
                       <option key={dist} value={dist} className="py-2 text-base">
                         {dist}
@@ -676,7 +883,7 @@ export default function Home() {
               {/* Tek Bir Ana Aksiyon Butonu: Nöbetçi Eczaneleri Göster */}
               <button
                 type="button"
-                className="w-full mt-2.5 sm:mt-3.5 h-11 sm:h-12 bg-red-600 hover:bg-red-700 text-white font-black text-sm sm:text-base rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
+                className="w-full mt-2 sm:mt-3 h-10 sm:h-11 bg-red-600 hover:bg-red-700 text-white font-black text-xs sm:text-base rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
                 onClick={() => {
                   fetchPharmacies(city, district, userLocation);
                   document.getElementById("sonuclar")?.scrollIntoView({ behavior: "smooth" });
@@ -684,32 +891,32 @@ export default function Home() {
                 disabled={loading}
               >
                 {loading ? (
-                  <Loader2 className="w-5 h-5 animate-spin text-white shrink-0" />
+                  <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-white shrink-0" />
                 ) : (
-                  <LocateFixed className="w-5 h-5 text-white shrink-0" />
+                  <LocateFixed className="w-4 h-4 sm:w-5 sm:h-5 text-white shrink-0" />
                 )}
-                <span>Nöbetçi Eczaneleri Göster</span>
+                <span>{t.showDutyPharmaciesBtn}</span>
               </button>
             </div>
 
             {/* Konum Bildirim Çubuğu */}
             <div
-              className={`mt-2 px-3 py-2 rounded-xl border text-[11px] sm:text-xs font-bold flex items-center justify-between gap-2 transition-all ${
+              className={`mt-1.5 px-2.5 py-1.5 rounded-xl border text-[11px] sm:text-xs font-bold flex items-center justify-between gap-2 transition-all ${
                 userLocation
                   ? "bg-emerald-50 border-emerald-300 text-emerald-800"
                   : "bg-amber-50 border-amber-300 text-amber-900"
               }`}
             >
-              <div className="flex items-center gap-1.5 text-left">
+              <div className="flex items-center gap-1.5 text-left min-w-0">
                 {userLocation ? (
                   <>
-                    <Check className="w-4 h-4 text-emerald-600 shrink-0 stroke-[3]" />
-                    <span>Konuma göre listelendi ({city} · {district}).</span>
+                    <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 stroke-[3]" />
+                    <span className="truncate">{t.locationListedStatus}</span>
                   </>
                 ) : (
                   <>
-                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span>Konum bilgisi alınamadı, elle adres giriniz.</span>
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span className="truncate">{t.locationFallbackStatus}</span>
                   </>
                 )}
               </div>
@@ -718,7 +925,7 @@ export default function Home() {
                 onClick={findNearby}
                 className="shrink-0 underline font-extrabold hover:opacity-80 cursor-pointer"
               >
-                GPS Yenile
+                {t.refreshGpsBtn}
               </button>
             </div>
           </div>
@@ -737,14 +944,14 @@ export default function Home() {
               {/* Sade ve Şık Sıralama Rozeti */}
               <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-50 text-red-700 font-extrabold text-xs border border-red-200 mb-2">
                 <MapPin className="w-3.5 h-3.5 text-red-600 shrink-0" />
-                <span>En yakından en uzağa göre sıralandı</span>
+                <span>{t.sortedByNearestBadge}</span>
               </div>
 
               <p className="eyebrow uppercase font-bold tracking-wider text-red-600">
-                {city} {district !== "Tümü" ? `· ${district}` : "· TÜM İLÇELER"}
+                {city} {district !== "Tümü" ? `· ${district}` : `· ${t.allDistrictsText}`}
               </p>
               <h2 className="text-2xl sm:text-3xl font-black text-gray-900 mt-1">
-                Nöbetçi Eczaneler
+                {t.dutyPharmaciesHeading}
               </h2>
             </div>
 
@@ -775,7 +982,7 @@ export default function Home() {
                           : "text-gray-700 hover:text-gray-950 hover:bg-white/80"
                       }`}
                     >
-                      <span>{dGroup.day}</span>
+                      <span>{translateDayLabel(dGroup.day)}</span>
                       {dGroup.date && (
                         <span
                           className={`hidden sm:inline text-[10px] font-bold px-1.5 py-0.2 rounded ${
@@ -1189,69 +1396,8 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="mb-8">
-            <span className="eyebrow uppercase font-extrabold text-red-600 tracking-wider">
-              NÖBETÇİ ECZANE REHBERİ & SSS
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-black text-gray-900 mt-1">
-              Nöbetçi Eczaneler Hakkında Bilmeniz Gerekenler
-            </h2>
-            <p className="text-gray-600 text-sm sm:text-base mt-2">
-              Türkiye genelinde 81 ilde nöbetçi eczane sistemi, acil ilaç temini ve nöbet saatleri
-              ile ilgili resmi mevzuat kuralları.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="p-5 rounded-2xl bg-gray-50 border border-gray-200">
-              <h3 className="text-base font-extrabold text-gray-900 mb-2 flex items-center gap-2">
-                <Clock3 size={18} className="text-red-600 shrink-0" />
-                Nöbetçi eczaneler kaça kadar açık?
-              </h3>
-              <p className="text-sm text-gray-600 leading-relaxed">
-                Nöbetçi eczaneler normal çalışma mesaisi bittiğinde (akşam 19:00 civarı) nöbete
-                başlar ve <strong>ertesi gün sabah saat 09:00'a kadar</strong> kesintisiz 24 saat
-                boyunca açık kalır. Pazar ve resmi tatil günlerinde ise tüm gün nöbetçi sistemi
-                geçerlidir.
-              </p>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-gray-50 border border-gray-200">
-              <h3 className="text-base font-extrabold text-gray-900 mb-2 flex items-center gap-2">
-                <ShieldCheck size={18} className="text-red-600 shrink-0" />
-                Nöbetçi eczanede ilaç fiyat farkı var mı?
-              </h3>
-              <p className="text-sm text-gray-600 leading-relaxed">
-                <strong>Hayır, kesinlikle ekstra nöbet ücreti alınmaz.</strong> Türkiye'deki tüm
-                eczanelerde Sağlık Bakanlığı ve SGK tarafından belirlenen resmi ilaç fiyat tarifesi
-                ve katkı payı oranları 7/24 aynı şekilde uygulanır.
-              </p>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-gray-50 border border-gray-200">
-              <h3 className="text-base font-extrabold text-gray-900 mb-2 flex items-center gap-2">
-                <Cross size={18} className="text-red-600 shrink-0" />
-                Reçetesiz veya raporlu ilaç alınabilir mi?
-              </h3>
-              <p className="text-sm text-gray-600 leading-relaxed">
-                Evet. T.C. kimlik numaranız ile sisteme kayıtlı raporlu ilaçlarınızı, hekiminizin
-                yazdığı e-reçeteleri ve reçetesiz satılan ilk yardım/ağrı kesici ürünlerini nöbetçi
-                eczanelerden temin edebilirsiniz.
-              </p>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-gray-50 border border-gray-200">
-              <h3 className="text-base font-extrabold text-gray-900 mb-2 flex items-center gap-2">
-                <MapPin size={18} className="text-red-600 shrink-0" />
-                En yakın nöbetçi eczaneye nasıl gidilir?
-              </h3>
-              <p className="text-sm text-gray-600 leading-relaxed">
-                Sayfamızdaki <strong>"Nöbetçi Eczaneleri Göster"</strong> butonuna basarak size en
-                yakın nöbetçileri mesafelerine göre sıralayabilir, <strong>"Yol Tarifi"</strong>{" "}
-                butonuna tıklayarak Google Haritalar ile doğrudan navigasyon başlatabilirsiniz.
-              </p>
-            </div>
-          </div>
+          {/* Dedicated Multilingual Interactive FAQ Grid with Schema.org JSON-LD Structured Data */}
+          <InteractiveFAQSection />
 
           {/* Popüler İl & İlçe Nöbetçi Eczane Bağlantıları */}
           <div className="mt-10 pt-8 border-t border-gray-200">
@@ -1399,6 +1545,161 @@ export default function Home() {
           <Link href="/veri-kaynaklari" className="button button-quiet">
             Veri ve Kota Detayları <ArrowRight size={19} />
           </Link>
+        </div>
+      </section>
+
+      {/* Uluslararası Çok Dilli SEO Rehberi (Google, Yandex, Bing - TR / EN / AR / RU) */}
+      <section
+        className="py-10 bg-slate-900 text-white border-t border-slate-800"
+        aria-label="Multilingual Pharmacy & Emergency Healthcare SEO Directory"
+      >
+        <div className="container max-w-6xl mx-auto px-4 space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-red-400">
+                GLOBAL HEALTHCARE SEO · TR / EN / AR / RU
+              </p>
+              <h2 className="text-xl sm:text-2xl font-black text-white mt-1">
+                {t.multilingualSeoHeading}
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-3xl">
+                {t.multilingualSeoSub}
+              </p>
+            </div>
+            <div className="notranslate flex flex-wrap gap-2">
+              {SUPPORTED_LANGUAGES.map((l) => (
+                <button
+                  key={l.code}
+                  type="button"
+                  onClick={() => {
+                    setLang(l.code);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  className={`px-3 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 cursor-pointer transition-all ${
+                    lang === l.code
+                      ? "bg-red-600 text-white shadow-md"
+                      : "bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700"
+                  }`}
+                >
+                  <span>{l.flag}</span>
+                  <span>{l.nativeName}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 text-left">
+            {/* English SEO Card */}
+            <article
+              lang="en"
+              className="notranslate p-4 sm:p-5 rounded-2xl bg-slate-800/80 border border-slate-700 space-y-2.5"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-black uppercase tracking-wider text-red-400">
+                  🇬🇧 ENGLISH · 24/7 PHARMACY
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setLang("en")}
+                  className="text-[10px] font-bold text-white bg-red-600/90 hover:bg-red-600 px-2 py-0.5 rounded cursor-pointer"
+                >
+                  English
+                </button>
+              </div>
+              <h3 className="text-sm font-extrabold text-white">
+                Pharmacy on Duty in Turkey (Nöbetçi Eczane) & 24/7 Emergency Hospital
+              </h3>
+              <p className="text-[11px] text-slate-300 leading-relaxed">
+                Looking for an open 24-hour night pharmacy in Istanbul, Antalya, Bodrum, Marmaris,
+                Izmir, or Ankara? Our live GPS map shows the nearest verified{" "}
+                <strong>Nöbetçi Eczane</strong>, phone numbers, Google Maps directions, and 24/7
+                emergency hospitals. Dial <strong>112</strong> for free ambulance.
+              </p>
+            </article>
+
+            {/* German SEO Card */}
+            <article
+              lang="de"
+              className="notranslate p-4 sm:p-5 rounded-2xl bg-slate-800/80 border border-slate-700 space-y-2.5"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-black uppercase tracking-wider text-amber-400">
+                  🇩🇪 DEUTSCH · NOTDIENST-APOTHEKE
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setLang("de")}
+                  className="text-[10px] font-bold text-white bg-red-600/90 hover:bg-red-600 px-2 py-0.5 rounded cursor-pointer"
+                >
+                  Deutsch
+                </button>
+              </div>
+              <h3 className="text-sm font-extrabold text-white">
+                24h Notdienst-Apotheken in der Türkei & Nächstes Krankenhaus
+              </h3>
+              <p className="text-[11px] text-slate-300 leading-relaxed">
+                Offene 24h Notdienst-Apotheke (Nöbetçi Eczane) in Antalya, Alanya, Side, Bodrum,
+                Marmaris, Istanbul oder Izmir gesucht? Interaktive GPS-Karte zeigt nahe gelegene
+                Apotheken, Telefonnummern, Routenplaner und Notaufnahmen. Notruf Türkei:{" "}
+                <strong>112</strong>.
+              </p>
+            </article>
+
+            {/* Arabic SEO Card */}
+            <article
+              lang="ar"
+              dir="rtl"
+              className="notranslate p-4 sm:p-5 rounded-2xl bg-slate-800/80 border border-slate-700 space-y-2.5 text-right"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-black uppercase tracking-wider text-emerald-400">
+                  🇸🇦 العربية · صيدلية مناوبة
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setLang("ar")}
+                  className="text-[10px] font-bold text-white bg-red-600/90 hover:bg-red-600 px-2 py-0.5 rounded cursor-pointer"
+                >
+                  العربية
+                </button>
+              </div>
+              <h3 className="text-sm font-extrabold text-white">
+                أقرب صيدلية مناوبة مفتوحة الآن في تركيا ومستشفيات الطوارئ
+              </h3>
+              <p className="text-[11px] text-slate-300 leading-relaxed">
+                ابحث عن أقرب صيدلية مناوبة 24 ساعة في إسطنبول، أنطاليا، طرابزون، إزمير، وبورصة.
+                خريطة GPS مباشرة مع أرقام الهواتف، اتجاهات خرائط جوجل، وأقرب مستشفى طوارئ. رقم
+                الطوارئ: <strong>112</strong>.
+              </p>
+            </article>
+
+            {/* Russian SEO Card */}
+            <article
+              lang="ru"
+              className="notranslate p-4 sm:p-5 rounded-2xl bg-slate-800/80 border border-slate-700 space-y-2.5"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-black uppercase tracking-wider text-sky-400">
+                  🇷🇺 РУССКИЙ · ДЕЖУРНЫЕ АПТЕКИ
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setLang("ru")}
+                  className="text-[10px] font-bold text-white bg-red-600/90 hover:bg-red-600 px-2 py-0.5 rounded cursor-pointer"
+                >
+                  Русский
+                </button>
+              </div>
+              <h3 className="text-sm font-extrabold text-white">
+                Дежурные круглосуточные аптеки в Турции (24/7) и больницы
+              </h3>
+              <p className="text-[11px] text-slate-300 leading-relaxed">
+                Круглосуточные дежурные аптеки (Nöbetçi Eczane) в Анталье, Аланье, Стамбуле,
+                Бодруме, Кемере. GPS-карта, адреса, телефоны и скорая медицинская помощь. Бесплатный
+                номер скорой: <strong>112</strong>.
+              </p>
+            </article>
+          </div>
         </div>
       </section>
 

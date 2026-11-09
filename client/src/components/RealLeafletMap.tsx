@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { formatDistance, calculateDistanceKm } from "@/lib/turkeyGeoData";
+import { useLanguage } from "@/lib/i18n";
 
 export interface PharmacyLocation {
   latitude: number | null;
@@ -35,6 +36,7 @@ export function RealLeafletMap({
   onSelect,
   userLocation,
 }: RealLeafletMapProps) {
+  const { t } = useLanguage();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
@@ -67,7 +69,14 @@ export function RealLeafletMap({
     });
     resizeObserver.observe(container);
 
+    const t1 = setTimeout(() => mapInstanceRef.current?.invalidateSize(), 60);
+    const t2 = setTimeout(() => mapInstanceRef.current?.invalidateSize(), 250);
+    const t3 = setTimeout(() => mapInstanceRef.current?.invalidateSize(), 600);
+
     return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
       resizeObserver.disconnect();
     };
   }, []);
@@ -104,13 +113,13 @@ export function RealLeafletMap({
 
       uMarker.bindPopup(`
         <div style="padding: 4px; font-weight: bold; color: #1d4ed8; font-size: 12px;">
-          📍 Sizin Konumunuz
+          📍 ${t.yourLocationPopup}
         </div>
       `);
 
       userMarkerRef.current = uMarker;
     }
-  }, [userLocation]);
+  }, [userLocation, t.yourLocationPopup]);
 
   // Update markers and bounds when pharmacies or selectedPharmacy change
   useEffect(() => {
@@ -201,13 +210,13 @@ export function RealLeafletMap({
 
       const popupHtml = `
         <div style="font-family: inherit; padding: 4px; min-width: 175px;">
-          <div style="color: #dc2626; font-size: 10px; font-weight: 800; text-transform: uppercase;">#${index + 1} · Nöbetçi Eczane</div>
+          <div style="color: #dc2626; font-size: 10px; font-weight: 800; text-transform: uppercase;">#${index + 1} · ${t.dutyPharmacyBadge}</div>
           <div style="font-size: 13px; font-weight: 800; color: #111; margin: 2px 0;">${pharmacy.name}</div>
           ${distanceBadge}
           <div style="font-size: 11px; color: #555; margin-bottom: 6px; line-height: 1.3;">${pharmacy.address || pharmacy.district?.name || ""}</div>
           <div style="display: flex; gap: 6px;">
-            <a href="tel:${pharmacy.phone.replace(/[^0-9+]/g, "")}" style="display: inline-block; background: #fdebec; color: #dc2626; padding: 4px 8px; border-radius: 5px; font-size: 11px; font-weight: 700; text-decoration: none;">Ara</a>
-            <a href="${mapsUrl}" target="_blank" rel="noreferrer" style="display: inline-block; background: #dc2626; color: #fff; padding: 4px 8px; border-radius: 5px; font-size: 11px; font-weight: 700; text-decoration: none;">Yol Tarifi</a>
+            <a href="tel:${pharmacy.phone.replace(/[^0-9+]/g, "")}" style="display: inline-block; background: #fdebec; color: #dc2626; padding: 4px 8px; border-radius: 5px; font-size: 11px; font-weight: 700; text-decoration: none;">${t.callBtn}</a>
+            <a href="${mapsUrl}" target="_blank" rel="noreferrer" style="display: inline-block; background: #dc2626; color: #fff; padding: 4px 8px; border-radius: 5px; font-size: 11px; font-weight: 700; text-decoration: none;">${t.directionsBtn}</a>
           </div>
         </div>
       `;
@@ -252,14 +261,20 @@ export function RealLeafletMap({
     }, 150);
 
     return () => clearTimeout(timer);
-  }, [pharmacies, selectedPharmacy, onSelect, userLocation]);
+  }, [pharmacies, selectedPharmacy, onSelect, userLocation, t]);
 
   return (
-    <div className="map-preview w-full h-full relative" aria-label="Nöbetçi eczane harita görünümü">
+    <div
+      className="map-preview w-full h-full relative"
+      style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+      aria-label="Nöbetçi eczane harita görünümü"
+    >
       <div
         ref={mapContainerRef}
         className="map-canvas w-full h-full relative z-0"
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
       />
     </div>
   );
 }
+

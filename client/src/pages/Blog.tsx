@@ -707,9 +707,9 @@ export default function Blog() {
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-50 text-red-700 text-xs font-extrabold border border-red-200">
                   <ShieldCheck size={14} /> GÜNCEL SAĞLIK & MEVZUAT KÜTÜPHANESİ
                 </span>
-                <h1 className="text-xl sm:text-3xl font-black text-slate-900">
+                <h2 className="text-xl sm:text-3xl font-black text-slate-900">
                   Nöbetçi Eczane, Acil Hastane ve İlaç Kullanım Rehberi
-                </h1>
+                </h2>
                 <p className="text-xs sm:text-sm text-slate-600 max-w-2xl leading-relaxed">
                   T.C. Sağlık Bakanlığı TİTCK, SGK MEDULA ve Türk Eczacıları Birliği mevzuatlarına
                   uygun olarak hazırlanan doğrulanmış hasta bilgilendirme rehberleri.

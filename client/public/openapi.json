@@ -1,0 +1,75 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Nöbetçi Eczanem API",
+    "description": "Türkiye 81 İl ve 973 İlçe Canlı Nöbetçi Eczane ve Sağlık Portalı API Servisi",
+    "version": "v1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://nobetci-eczanem.com"
+    }
+  ],
+  "paths": {
+    "/api/pharmacies/on-duty": {
+      "get": {
+        "operationId": "getOnDutyPharmacies",
+        "summary": "Nöbetçi eczaneleri il ve ilçeye göre listeler",
+        "parameters": [
+          {
+            "name": "city",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "İl adı veya slug (örn. istanbul, ankara)"
+          },
+          {
+            "name": "district",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "İlçe adı (örn. Kadıköy, Çankaya)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Nöbetçi eczaneler listesi"
+          }
+        }
+      }
+    },
+    "/api/pharmacies/nearby": {
+      "get": {
+        "operationId": "getNearbyPharmacies",
+        "summary": "Koordinata en yakın nöbetçi eczaneleri verir",
+        "parameters": [
+          {
+            "name": "latitude",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "longitude",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Yakındaki eczaneler"
+          }
+        }
+      }
+    }
+  }
+}

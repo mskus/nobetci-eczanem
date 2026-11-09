@@ -1,0 +1,18 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "Nöbetçi Eczanem Sağlık Servisi",
+  "name_for_model": "nobetci_eczanem_turkey_health",
+  "description_for_human": "Türkiye genelinde 81 il ve 973 ilçede canlı nöbetçi eczaneler, en yakın acil hastaneler, ilaç fiyatları ve SGK katkı payı sorgulama servisi.",
+  "description_for_model": "Plugin to find duty pharmacies, nearest emergency hospitals, medicine prices, SGK copay estimations, and health tools in Turkey across 81 provinces and 973 districts.",
+  "auth": {
+    "type": "none"
+  },
+  "api": {
+    "type": "openapi",
+    "url": "https://nobetci-eczanem.com/openapi.json",
+    "is_user_authenticated": false
+  },
+  "logo_url": "https://nobetci-eczanem.com/og-nobetci-eczanem.svg",
+  "contact_email": "iletisim@nobetci-eczanem.com",
+  "legal_info_url": "https://nobetci-eczanem.com/veri-kaynaklari"
+}

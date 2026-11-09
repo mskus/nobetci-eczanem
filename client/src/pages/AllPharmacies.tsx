@@ -85,11 +85,7 @@ function FormattedAddress({
     cleanAddress = `${district && district !== "Tümü" ? district + " Mah. " : ""}Atatürk Cad. No: 18/A`;
   }
 
-  const cityLower = (city || "").toLocaleLowerCase("tr-TR");
-  let detailedFullAddress = cleanAddress;
-  if (cityLower && !detailedFullAddress.toLocaleLowerCase("tr-TR").includes(cityLower)) {
-    detailedFullAddress += `, ${district && district !== "Tümü" ? district + " / " : ""}${city}`;
-  }
+  const detailedFullAddress = cleanAddress;
 
   return (
     <div className="space-y-2 text-left">
